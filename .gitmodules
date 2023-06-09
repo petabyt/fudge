@@ -1,0 +1,3 @@
+[submodule "lib/camlib"]
+	path = lib/camlib
+	url = https://github.com/petabyt/camlib
