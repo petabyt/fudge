@@ -1,3 +1,35 @@
+
+<div align="right">
+  <details>
+    <summary >🌐 Language</summary>
+    <div>
+      <div align="center">
+        <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=en">English</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=zh-CN">简体中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=zh-TW">繁體中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=ja">日本語</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=ko">한국어</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=hi">हिन्दी</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=th">ไทย</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=fr">Français</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=de">Deutsch</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=es">Español</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=it">Italiano</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=ru">Русский</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=pt">Português</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=nl">Nederlands</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=pl">Polski</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=ar">العربية</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=fa">فارسی</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=tr">Türkçe</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=vi">Tiếng Việt</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=id">Bahasa Indonesia</a>
+        | <a href="https://openaitx.github.io/view.html?user=petabyt&project=fudge&lang=as">অসমীয়া</
+      </div>
+    </div>
+  </details>
+</div>
+
 # Fudge
 This is a cross-platform open-source alternative to Fujifilm's official camera app.  
 
