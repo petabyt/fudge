@@ -353,20 +353,31 @@ int fuji_process_raf(struct PtpRuntime *r, const char *input_raf_path, const cha
 
 	uint8_t buffer[1024];
 	struct FujiProfile fp;
-	fp_parse_d185(profile, profile_len, &fp);
-
-	struct FujiProfile user_fp;
-	rc = fp_parse_fp1(profile_xml_path, &user_fp);
+	rc = fp_parse_d185(profile, profile_len, &fp);
 	if (rc == 0) {
-		rc = fp_apply_profile(&user_fp, &fp);
-		if (rc) {
-			ptp_error_log("Failed to merge profile\n");
+		printf("RAF file FP profile:\n");
+		fp_dump_struct(stdout, FP_FORMAT_HUMAN_READABLE, &fp);
+		struct FujiProfile user_fp;
+		rc = fp_parse_fp1(profile_xml_path, &user_fp);
+
+		if (rc == 0) {
+			rc = fp_apply_profile(&user_fp, &fp);
+			if (rc) {
+				ptp_error_log("Failed to merge profile\n");
+				return PTP_RUNTIME_ERR;
+			}
+			printf("Merged FP profiles:\n");
+			fp_dump_struct(stdout, FP_FORMAT_HUMAN_READABLE, &fp);
+		} else {
+			ptp_error_log("Failed to parse '%s', check console output\n", profile_xml_path);
 			return PTP_RUNTIME_ERR;
 		}
 	} else {
-		ptp_error_log("Failed to parse '%s', check console output\n", profile_xml_path);
+		ptp_error_log("Failed to parse RAF file profile\n");
 		return PTP_RUNTIME_ERR;
 	}
+
+	
 
 	profile_len = fp_create_d185(&fp, buffer, sizeof(buffer));
 	if (profile_len < 0) {

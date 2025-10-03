@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
 				printf("Error parsing profile: '%s'\n", fp_get_error());
 				return rc;
 			}
-			fp_dump_struct(stdout, &fp);
+			fp_dump_struct(stdout, FP_FORMAT_HUMAN_READABLE, &fp);
 			printf("\n");
 
 			return 0;
