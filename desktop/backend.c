@@ -229,7 +229,10 @@ int fudge_convert_raf(int devnum, const char *input, const char *output, const c
 	rc = fujiusb_setup(r);
 	if (rc) return rc;
 
-	rc = fuji_process_raf(r, input, output, profile, quality);
+	// observed that Fuji uses this packat size during RAW conversion
+	r->max_packet_size = FUJI_MAX_PARTIAL_OBJECT;
+
+	rc = fuji_convert_raf(r, input, output, profile, quality);
 
 	ptp_close_session(r);
 	ptp_device_close(r);

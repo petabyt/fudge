@@ -47,7 +47,7 @@ int fuji_send_object_ex(struct PtpRuntime *r, const void *data, size_t length) {
 	struct PtpCommand cmd;
 	cmd.code = PTP_OC_FUJI_SendObject2;
 	cmd.param_length = 0;
-	return ptp_send_data(r, &cmd, data, (int)length);
+	return ptp_send_data(r, &cmd, data, length);
 }
 
 int fujiusb_dump_info(struct PtpRuntime *r) {
@@ -315,17 +315,13 @@ int fuji_send_raf(struct PtpRuntime *r, const char *path) {
 		return rc;
 	}
 
-	r->max_packet_size = 261632;
-
 	rc = fuji_send_object_ex(r, buffer, file_size);
-
-	r->max_packet_size = 512;
 
 	free(buffer);
 	return rc;
 }
 
-int fuji_process_raf(struct PtpRuntime *r, const char *input_raf_path, const char *output_path, const char *profile_xml_path, const enum ConversionOutputQuality quality) {
+int fuji_convert_raf(struct PtpRuntime *r, const char *input_raf_path, const char *output_path, const char *profile_xml_path, const enum ConversionOutputQuality quality) {
 	int rc;
 
 	struct FujiDeviceKnowledge *fuji = fuji_get(r);

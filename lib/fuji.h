@@ -210,6 +210,6 @@ int fuji_send_object_ex(struct PtpRuntime *r, const void *data, size_t length);
 /// @param input_raf_path Path for RAF file
 /// @param profile_xml_path String data for XML profile to be parsed by fp
 /// @param output_path Path for the resulting JPG file
-int fuji_process_raf(struct PtpRuntime* r, const char* input_raf_path, const char* output_path, const char* profile_xml_path, const enum ConversionOutputQuality quality);
+int fuji_convert_raf(struct PtpRuntime* r, const char* input_raf_path, const char* output_path, const char* profile_xml_path, const enum ConversionOutputQuality quality);
 
 #endif

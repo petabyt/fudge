@@ -156,7 +156,8 @@ int main(int argc, char **argv) {
 				return -1;
 			}
 			int rc = fudge_convert_raf(devnum, argv[i + 1], argv[i + 2], argv[i + 3], CONVERSION_OUTPUT_QUALITY_FULL);
-			plat_dbg("Result: %d '%s'\n", rc, fp_get_error());
+			plat_dbg("Result: %d '%s' (PTP meaning: '%s')\n", rc, fp_get_error(), ptp_perror(rc));
+			
 			return rc;
 		}
 		if (!strcmp(argv[i], "--test-wifi")) {
