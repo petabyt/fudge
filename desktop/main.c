@@ -148,10 +148,7 @@ int main(int argc, char **argv) {
 				printf("Error parsing profile: '%s'\n", fp_get_error());
 				return rc;
 			}
-			fp_dump_struct(stdout, FP_FORMAT_HUMAN_READABLE, &fp);
-			printf("\n");
-
-			return 0;
+			return fp_dump_struct(stdout, FP_FORMAT_HUMAN_READABLE, &fp);
 		}
 		if (!strcmp(argv[i], "--raw")) {
 			if (i + 3 >= argc) {
