@@ -155,7 +155,9 @@ int main(int argc, char **argv) {
 				printf("%s --raw <input> <output> <profile>\n", argv[0]);
 				return -1;
 			}
-			return fudge_process_raf(devnum, argv[i + 1], argv[i + 2], argv[i + 3]);
+			int rc = fudge_convert_raf(devnum, argv[i + 1], argv[i + 2], argv[i + 3], CONVERSION_OUTPUT_QUALITY_FULL);
+			plat_dbg("Result: %d '%s'\n", rc, fp_get_error());
+			return rc;
 		}
 		if (!strcmp(argv[i], "--test-wifi")) {
 			int rc = fudge_test_all_cameras();

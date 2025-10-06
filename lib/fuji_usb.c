@@ -325,7 +325,7 @@ int fuji_send_raf(struct PtpRuntime *r, const char *path) {
 	return rc;
 }
 
-int fuji_process_raf(struct PtpRuntime *r, const char *input_raf_path, const char *output_path, const char *profile_xml_path) {
+int fuji_process_raf(struct PtpRuntime *r, const char *input_raf_path, const char *output_path, const char *profile_xml_path, const enum ConversionOutputQuality quality) {
 	int rc;
 
 	struct FujiDeviceKnowledge *fuji = fuji_get(r);
@@ -397,27 +397,47 @@ int fuji_process_raf(struct PtpRuntime *r, const char *input_raf_path, const cha
 	rc = ptp_set_prop_value_data(r, PTP_DPC_FUJI_RawConvProfile, buffer, profile_len);
 	if (rc) return rc;
 
-	free(profile);
-
-	rc = ptp_set_prop_value16(r, PTP_DPC_FUJI_StartRawConversion, 0);
+	switch (quality) {
+		case CONVERSION_OUTPUT_QUALITY_THUMBNAIL:
+		case CONVERSION_OUTPUT_QUALITY_PREVIEW:
+			rc = ptp_set_prop_value16(r, PTP_DPC_FUJI_StartRawConversion, FUJI_START_RAW_CONVERSION_PREVIEW_CONV);
+			break;
+		case CONVERSION_OUTPUT_QUALITY_FULL:
+			rc = ptp_set_prop_value16(r, PTP_DPC_FUJI_StartRawConversion, FUJI_START_RAW_CONVERSION_FULL_CONV);
+			break;			
+	}
+	
 	if (rc) return rc;
 
-	for (int i = 0; i < 20; i++) {
+	for (int i = 0; i < 50; i++) {
 		struct PtpArray *list;
 		rc = ptp_get_object_handles(r, -1, 0, 0, &list);
 		if (rc) return rc;
 
 		if (list->length == 0) {
+			// wait for the converted file to be ready
 			printf("Waiting..\n");
-			usleep(1000 * 1000);
+			usleep(1000 * 100);
 			free(list);
+			continue;
 		} else {
-			rc = ptp_get_object(r, (int) list->data[0]);
+			// X-RAW Studio here does a call to ptp_get_object_info but it's not necessary
+			switch (quality) {
+				case CONVERSION_OUTPUT_QUALITY_THUMBNAIL:
+					rc = ptp_get_thumbnail(r, (int)list->data[0]);
+					break;
+				case CONVERSION_OUTPUT_QUALITY_PREVIEW:
+				case CONVERSION_OUTPUT_QUALITY_FULL:
+					rc = ptp_get_object(r, (int)list->data[0]);
+					break;
+			}
+
 			if (rc) return rc;
 
 			FILE *f = fopen(output_path, "wb");
 			if (f == NULL) {
 				ptp_error_log("Failed to write to output");
+				free(list);
 				return PTP_RUNTIME_ERR;
 			}
 			fwrite(ptp_get_payload(r), 1, ptp_get_payload_length(r), f);
@@ -431,6 +451,26 @@ int fuji_process_raf(struct PtpRuntime *r, const char *input_raf_path, const cha
 			break;
 		}
 	}
+
+	// Download final the profile, used for the output file
+	ptp_mutex_lock(r);
+	rc = ptp_get_prop_value(r, PTP_DPC_FUJI_RawConvProfile);
+	if (rc) {
+		ptp_mutex_unlock(r);
+		return rc;
+	}
+	profile_len = ptp_get_payload_length(r);
+	profile = malloc(profile_len);
+	memcpy(profile, ptp_get_payload(r), profile_len);
+	ptp_mutex_unlock(r);
+
+	ptp_verbose_log("Got %d bytes of applied profile, used for conversion\n", profile_len);
+
+	rc = fp_parse_d185(profile, profile_len, &fp);
+	free(profile);
+	printf("-----\nApplied FP profile:\n");
+	rc = fp_dump_struct(stdout, FP_FORMAT_HUMAN_READABLE, &fp);
+	if (rc) return rc;
 
 	return 0;
 }
