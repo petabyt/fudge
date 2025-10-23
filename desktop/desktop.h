@@ -28,6 +28,9 @@ int fuji_test_discovery(struct PtpRuntime *r);
 //int fuji_test_filesystem(struct PtpRuntime *r);
 //int fuji_test_setup(struct PtpRuntime *r);
 
+/// @brief 
+int fudge_get_profile(int devnum, const char *input, struct FujiProfile* fp);
+
 /// @brief CLI function to do a RAW file conversion into image file
 int fudge_convert_raf(int devnum, const char *input, const char *output, const char *profile, const enum ConversionOutputQuality);
 

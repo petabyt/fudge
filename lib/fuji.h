@@ -207,7 +207,14 @@ int fuji_send_object_info_ex(struct PtpRuntime *r, int storage_id, int handle, s
 /// @brief Function for 0x900d
 int fuji_send_object_ex(struct PtpRuntime *r, const void *data, size_t length);
 
-/// @param input_raf_path Path for RAF file
+/// @brief Upload the RAW file to the camera and get it's conversion profile
+/// @param input_raf_path Path for RAW file
+/// @param [out] profile in d185 format
+/// @param [out] profile_len length of the d185 profile
+int fuji_upload_raf_get_profile(struct PtpRuntime* r, const char* input_raf_path, void** profile, int * const profile_len);
+
+/// @brief Do a conversion of a RAW file according to the profile file using connected camera
+/// @param input_raf_path Path for RAW file
 /// @param profile_xml_path String data for XML profile to be parsed by fp
 /// @param output_path Path for the resulting JPG file
 int fuji_convert_raf(struct PtpRuntime* r, const char* input_raf_path, const char* output_path, const char* profile_xml_path, const enum ConversionOutputQuality quality);

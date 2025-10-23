@@ -321,31 +321,49 @@ int fuji_send_raf(struct PtpRuntime *r, const char *path) {
 	return rc;
 }
 
+int fuji_upload_raf_get_profile(struct PtpRuntime* r, const char* input_raf_path, void** profile, int * const profile_len)
+{
+	// observed that Fuji uses this packet size during RAW conversion
+	r->max_packet_size = FUJI_MAX_PARTIAL_OBJECT;
+
+    int rc;
+    struct FujiDeviceKnowledge *fuji = fuji_get(r);
+    if (fuji->transport != FUJI_FEATURE_RAW_CONV) {
+        ptp_error_log("Not in raw transfer mode\n");
+        return PTP_RUNTIME_ERR;
+    }
+
+    rc = fuji_send_raf(r, input_raf_path);
+    if (rc)
+        return rc;
+
+    // Download the profile
+    ptp_mutex_lock(r);
+    rc = ptp_get_prop_value(r, PTP_DPC_FUJI_RawConvProfile);
+    if (rc) {
+        ptp_mutex_unlock(r);
+        return rc;
+    }
+    *profile_len = ptp_get_payload_length(r);
+    *profile = malloc(*profile_len);
+    memcpy(*profile, ptp_get_payload(r), *profile_len);
+    ptp_mutex_unlock(r);
+
+    ptp_verbose_log("Got %d bytes of profile embedded in the RAW file\n", profile_len);
+
+    return rc;
+}
+
 int fuji_convert_raf(struct PtpRuntime *r, const char *input_raf_path, const char *output_path, const char *profile_xml_path, const enum ConversionOutputQuality quality) {
 	int rc;
 
-	struct FujiDeviceKnowledge *fuji = fuji_get(r);
-	if (fuji->transport != FUJI_FEATURE_RAW_CONV) {
-		ptp_error_log("Not in raw transfer mode\n");
-		return PTP_RUNTIME_ERR;
-	}
-
-	rc = fuji_send_raf(r, input_raf_path);
-	if (rc) return rc;
-
-	// Download the profile
-	ptp_mutex_lock(r);
-	rc = ptp_get_prop_value(r, PTP_DPC_FUJI_RawConvProfile);
+	int profile_len;
+	void *profile;
+	
+	rc = fuji_upload_raf_get_profile(r, input_raf_path, &profile, &profile_len);
 	if (rc) {
-		ptp_mutex_unlock(r);
-		return rc;
-	}
-	int profile_len = ptp_get_payload_length(r);
-	void *profile = malloc(profile_len);
-	memcpy(profile, ptp_get_payload(r), profile_len);
-	ptp_mutex_unlock(r);
 
-	ptp_verbose_log("Got %d bytes of profile embedded in the RAW file\n", profile_len);
+	}
 
 	uint8_t buffer[1024];
 	struct FujiProfile fp;
@@ -384,7 +402,7 @@ int fuji_convert_raf(struct PtpRuntime *r, const char *input_raf_path, const cha
 		return PTP_RUNTIME_ERR;
 	}
 
-	profile_len = fp_create_d185(&fp, buffer, sizeof(buffer));
+	profile_len = fp_create_d185(&fp, (struct D185_t* )buffer, sizeof(buffer));
 	if (profile_len < 0) {
 		printf("Error creating d185\n");
 		return -1;
