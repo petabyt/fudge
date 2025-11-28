@@ -221,7 +221,7 @@ int fudge_dump_usb(int devnum) {
 	return rc;
 }
 
-int fudge_process_raf(int devnum, const char *input, const char *output, const char *profile) {
+int fudge_convert_raf(int devnum, const char *input, const char *output, const char *profile, const enum ConversionOutputQuality quality) {
 	struct PtpRuntime *r = ptp_new(PTP_USB);
 	int rc = fudge_usb_connect(r, devnum);
 	if (rc) return rc;
@@ -229,7 +229,8 @@ int fudge_process_raf(int devnum, const char *input, const char *output, const c
 	rc = fujiusb_setup(r);
 	if (rc) return rc;
 
-	rc = fuji_process_raf(r, input, output, profile);
+
+	rc = fuji_convert_raf(r, input, output, profile, quality);
 
 	ptp_close_session(r);
 	ptp_device_close(r);

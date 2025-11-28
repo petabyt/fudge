@@ -12,6 +12,10 @@ This app isn't finished yet, so don't set high expectations. Fuji's implementati
 - Liveview & Remote capture
 - Implement Bluetooth pairing
 
+- get D185 prop PTP comms from more cameras to reverse-engineer the protocol better
+- implement generating FP2 profile file from the RAW file, so you can start with edits
+- Replacement of X-RAW Studio for desktop
+
 ## Compiling
 ```
 git clone https://github.com/petabyt/fudge.git --depth 1 --recurse-submodules

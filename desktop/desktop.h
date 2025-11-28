@@ -3,6 +3,7 @@
 #define DESKTOP_H
 #include <stdio.h>
 #include <libpict.h>
+#include <fuji.h> // for ConversionOutputQuality
 
 int fudge_test_all_cameras(void);
 
@@ -27,8 +28,8 @@ int fuji_test_discovery(struct PtpRuntime *r);
 //int fuji_test_filesystem(struct PtpRuntime *r);
 //int fuji_test_setup(struct PtpRuntime *r);
 
-/// @brief CLI function to do quick conversion
-int fudge_process_raf(int devnum, const char *input, const char *output, const char *profile);
+/// @brief CLI function to do a RAW file conversion into image file
+int fudge_convert_raf(int devnum, const char *input, const char *output, const char *profile, const enum ConversionOutputQuality);
 
 int fudge_download_backup(int devnum, const char *output);
 int fudge_restore_backup(int devnum, const char *output);

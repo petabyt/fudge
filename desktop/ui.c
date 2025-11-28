@@ -137,7 +137,7 @@ static void option(const char *name, struct FujiLookup *tbl, int *option, uint32
 
 static void *thread_raw_conversion(void *arg) {
 	struct State *state = (struct State *)arg;
-	int rc = fudge_process_raf(0, state->raf_path, state->output_jpg_path, state->fp_xml_path);
+	int rc = fudge_convert_raf(0, state->raf_path, state->output_jpg_path, state->fp_xml_path, CONVERSION_OUTPUT_QUALITY_FULL);
 	if (rc) {
 		app_print("Failed to convert RAW");
 	}

@@ -154,6 +154,17 @@ enum FujiUSBModes {
 	FUJI_USB_MODE_WEBCAM = 8,
 };
 
+/// @brief Possible value for PTP_DPC_FUJI_StartRawConversion
+enum FujiStartRawConversion {
+	// ignores ImageSize, Image Quality from RawConvProfile operation. Produces images smaller than S, Normal.
+	// Used by X-RAW Studio for "Preview: Conversion Speed Priority"
+	FUJI_START_RAW_CONVERSION_PREVIEW_CONV = 0, 
+	// respects ImageSize, Image Quality from RawConvProfile.
+	// Used by X-RAW Studio for "Preview: Image Quality Priority" as well as the conversion itself
+	// ("Preview: Image Quality Priority" uses your ImageSize settings, but sets ImageQuality to "Normal")
+	FUJI_START_RAW_CONVERSION_FULL_CONV = 1,
+};
+
 // ECs and PCs stuff from libgphoto2 ptp.h - most appear to be inaccurate or misplaced
 #define PTP_EC_FUJI_PreviewAvailable		0xC001
 #define PTP_EC_FUJI_ObjectAdded			0xC004
