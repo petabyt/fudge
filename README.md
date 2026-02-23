@@ -1,3 +1,16 @@
+# Notice (Feb 2026)
+
+Some changes will be made to Fudge:
+
+- The current Fudge app written in XML/Java is deprecated and will be deleted
+- libfuji (lib/) development will continue in this repo: https://github.com/petabyt/libfuji
+- Raw conversion CLI/GUI has been split off into this repo: https://github.com/petabyt/fudge-desktop-legacy
+- A new Android app is being rewritten using Jetpack Compose/Kotlin
+- This app will support Fujifilm's WiFi USB features as before. Bluetooth pairing support will also be added.
+- Support for other camera brands will be added
+
+---
+
 # Fudge
 This is a cross-platform open-source alternative to Fujifilm's official camera app.  
 
@@ -23,7 +36,5 @@ Open android/ in Android Studio.
 This software is based in part on the work of the Independent JPEG Group.
 
 [ezxml](https://ezxml.sourceforge.net/) (MIT License)
-
-[lua 5.3](https://www.lua.org/license.html) (MIT License)
 
 [com.jsibbold:zoomage](https://github.com/jsibbold/zoomage/blob/master/LICENSE)
