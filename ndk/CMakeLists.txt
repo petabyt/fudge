@@ -55,6 +55,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
     thread.c
     module.c
     liveview.c
+    exif.c
 )
 target_compile_options(${CMAKE_PROJECT_NAME}
     PRIVATE -Wall -Wshadow -Wcast-qual -Wpedantic -Werror=incompatible-pointer-types -Werror=incompatible-pointer-types -Werror=deprecated-declarations -Werror=narrowing
