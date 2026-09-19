@@ -461,6 +461,9 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
         }
     }
 
+    fun dumpStatus(): String {
+        return "Manifest: ${request.manifestName}, Target: ${request.targetIndex}, SetupOption: ${request.chosenSetupOption}"
+    }
     fun addDownloadedItem(path: String, metadata: FileMetadata?) {
         downloadedItemPaths += path
     }

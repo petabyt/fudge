@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -61,11 +60,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.danielc.R
 import dev.danielc.common.BackgroundViewModel
-import dev.danielc.common.Widget
 import dev.danielc.common.Device
 import dev.danielc.common.ModuleManifest
 import dev.danielc.common.ModuleProperty
 import dev.danielc.common.StorageInfo
+import dev.danielc.common.Widget
 import dev.danielc.common.longToFileSize
 import dev.danielc.common.ui.DynamicScaffold
 import dev.danielc.common.ui.DynamicScaffoldNavBarItem

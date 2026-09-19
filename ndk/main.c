@@ -430,6 +430,11 @@ int pak_rt_add_wifi_connection(struct PakModule *mod, struct PakWiFiApFilter *fi
 	return 0;
 }
 
+int pak_rt_add_folder_info(struct PakModule *mod, const char *storage_name, const char *folder_path, unsigned int n_items, enum PakSortedBy sorted_by) {
+	// TODO:
+	return -1;
+}
+
 JNIEXPORT jobject JNICALL Java_dev_danielc_fudge_InstrumentedTest_getTestWiFiApFilter(JNIEnv *env, jobject thiz) {
 	struct PakWiFiApFilter filter = {0};
 	filter.has_ssid = 1;

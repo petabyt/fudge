@@ -3,18 +3,9 @@ package dev.danielc.common.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarDefaults
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -334,7 +325,10 @@ fun ModuleInstanceNav(module: ModuleInstance, backToMainScreen: () -> Unit = {})
         composable("disconnected") {
             val debugLogState by module.debugLogModel.uiState.collectAsStateWithLifecycle()
             val reason = "${module.disconnectReason ?: "(no reason)"} - (${Runtime.errorCodeToString(module.disconnectedErrorCode ?: 0)})"
-            DisconnectedScreen(reason, backToMainScreen = backToMainScreen, consoleState = debugLogState)
+            DisconnectedScreen(reason, backToMainScreen = backToMainScreen, consoleState = debugLogState, report = BugReport(
+                moduleInstanceInfo = module.dumpStatus(),
+                verboseLog = module.getVerboseLog(),
+            ))
         }
         composable(Screen.FILE_VIEWER.strId) {
             val viewerState by module.viewerViewModel.viewerState.collectAsStateWithLifecycle()

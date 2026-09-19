@@ -89,4 +89,5 @@ open class NativeModule {
     external fun updateNativeLiveview(view: Surface?, isPaused: Boolean)
     // Blocking render loop
     external fun nativeLiveviewThread()
+    external fun getVerboseLog(): String
 }

@@ -3,6 +3,7 @@ package dev.danielc.fudge
 import android.app.ComponentCaller
 import android.content.ComponentCallbacks2
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -46,6 +47,9 @@ object BuildInfo {
     )
     val isNightly = BuildConfig.FLAVOR == "nightly"
     val isDebug = BuildConfig.DEBUG
+    val packageName = BuildConfig.APPLICATION_ID
+    val version = BuildConfig.VERSION_NAME
+    val osVersion = Build.VERSION.SDK_INT
 }
 
 class MainActivity : ComponentActivity(), ComponentCallbacks2 {

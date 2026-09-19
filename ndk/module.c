@@ -445,11 +445,34 @@ JNIEXPORT void JNICALL
 Java_dev_danielc_fudge_NativeModule_nativeLiveviewThread(JNIEnv *env, jobject thiz) {
 	struct TempStruct info;
 	struct PakModule *mod = get_mod(env, thiz, &info);
+	__android_log_write(ANDROID_LOG_ERROR, "liveview", "Start liveview thread");
+    struct timeval start, end;
 	while (!atomic_load(&mod->rt->liveview.liveview_cancel)) {
+		gettimeofday(&start, NULL);
 		if (mod->on_request_liveview_frame(mod, -1, &(struct PakFileHandle){
 			.storage_name = "liveview",
 		})) break;
+        gettimeofday(&end, NULL);
+
+        long elapsed_us = (end.tv_sec - start.tv_sec) * 1000000L + (end.tv_usec - start.tv_usec);
+		// We'll hardcode 30fps for now
+        long sleep_time = (1000000 / 30) - elapsed_us;
+
+        if (sleep_time > 0) {
+            usleep(sleep_time);
+        }
 		usleep(1000000 / 30);
 	}
+
+	__android_log_write(ANDROID_LOG_ERROR, "liveview", "end liveview thread");
 	release_mod(env, &info);
+}
+
+JNIEXPORT jstring JNICALL
+Java_dev_danielc_fudge_NativeModule_getVerboseLog(JNIEnv *env, jobject thiz) {
+	struct TempStruct info;
+	struct PakModule *mod = get_mod(env, thiz, &info);
+	jstring str = (*env)->NewString(env, (const jchar *)mod->rt->log_buf, 0);
+	release_mod(env, &info);
+	return str;
 }
