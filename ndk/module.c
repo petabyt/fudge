@@ -123,12 +123,16 @@ int pak_saved_info_from_jobject(JNIEnv *env, jobject saved_o, struct PakSavedCon
 	(*env)->ReleaseStringUTFChars(env, id_o, id_s);
 
 	jobject data_o = (*env)->GetObjectField(env, saved_o, (*env)->GetFieldID(env, saved_c, "privateData", "[B"));
-	jsize len = (*env)->GetArrayLength(env, data_o);
-	uint8_t *data = malloc((size_t)len);
-	(*env)->GetByteArrayRegion(env, data_o, 0, len, (jbyte *)data);
+	if (data_o == NULL) {
+		saved->aux_data = NULL; saved->aux_data_length = 0;
+	} else {
+		jsize len = (*env)->GetArrayLength(env, data_o);
+		uint8_t *data = malloc((size_t)len);
+		(*env)->GetByteArrayRegion(env, data_o, 0, len, (jbyte *)data);
 
-	saved->aux_data_length = (unsigned int)len;
-	saved->aux_data = data;
+		saved->aux_data_length = (unsigned int)len;
+		saved->aux_data = data;
+	}
 
 	(*env)->PopLocalFrame(env, NULL);
 	return 0;
