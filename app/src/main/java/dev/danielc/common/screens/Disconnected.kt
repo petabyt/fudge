@@ -37,7 +37,7 @@ fun DisconnectedScreen(reason: String = "Reason: Failed to connect - (Disconnect
 
     FudgeTheme {
         if (showBugDialog) {
-            BugReportDialog(backToMainScreen, report)
+            BugReportDialog({ showBugDialog = false }, backToMainScreen, report)
         }
         BackHandler {
             backToMainScreen()

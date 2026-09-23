@@ -1,5 +1,6 @@
 package dev.danielc.common
 import dev.danielc.R
+import dev.danielc.common.MimeType.FILE
 import kotlinx.serialization.Serializable
 
 fun longToFileSize(bytes: Long): String {
@@ -117,10 +118,21 @@ data class SavedDeviceInfo(
   */
 sealed interface Widget {
     val args: Properties
+    enum class Group(val id: Int) {
+        DEFAULT(0),
+        LIVEVIEW(1),
+        AUDIO(2);
+        companion object {
+            fun fromInt(id: Int): Group? { return Group.entries.find { it.id == id } }
+        }
+    }
     data class Properties(
         val name: String,
         val title: String,
-    )
+        val group: Group = Group.DEFAULT,
+    ) {
+        constructor(name: String, title: String, group: Int) : this(name, title, Group.fromInt(group) ?: Group.DEFAULT)
+    }
     data class Button(override val args: Properties): Widget
     data class BooleanSetting(override val args: Properties, val value: Boolean): Widget
     data class IntSetting(override val args: Properties, val value: Int): Widget
@@ -327,6 +339,18 @@ enum class MimeType(val mediaTypeString: String) {
         fun toString(t: MimeType?): String {
             return (t ?: FILE).mediaTypeString
         }
+        fun fromString(str: String?): MimeType {
+            return MimeType.entries.find { it.mediaTypeString == str } ?: FILE
+        }
+    }
+}
+enum class WidgetNames(val id: String) {
+    SHUTTER_SPEED("shutter-speed"),
+    ISO("iso"),
+    APERTURE("aperture"),
+    WHITE_BALANCE("white-balance"),
+    IMAGE_FORMAT("image-format");
+    companion object {
         fun fromString(str: String?): MimeType {
             return MimeType.entries.find { it.mediaTypeString == str } ?: FILE
         }

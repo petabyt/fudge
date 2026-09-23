@@ -83,7 +83,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class DashboardState(
-    val panes: List<Widget> = emptyList(),
+    val widgets: List<Widget> = emptyList(),
     val batteryLevelMain: Int? = null,
     val batteryLevelLeft: Int? = null,
     val batteryLevelRight: Int? = null,
@@ -138,8 +138,9 @@ open class DashboardModel(
     fun setDashboardPane(pane: Widget) {
         scope.launch(Dispatchers.IO) {
             _state.update { currentState ->
-                if (currentState.panes.find { it.args.name == pane.args.name } == null) {
-                    currentState.copy(panes = currentState.panes + pane)
+                // Incorrect?
+                if (currentState.widgets.find { it.args.name == pane.args.name } == null) {
+                    currentState.copy(widgets = currentState.widgets + pane)
                 } else {
                     currentState
                 }
@@ -149,11 +150,11 @@ open class DashboardModel(
     fun updateSettingPane(pane: Widget) {
         scope.launch(Dispatchers.IO) {
             _state.update { currentState ->
-                val index = currentState.panes.find { it.args.name == pane.args.name }
-                val list = currentState.panes.toMutableList()
+                val index = currentState.widgets.find { it.args.name == pane.args.name }
+                val list = currentState.widgets.toMutableList()
                 if (index != null) {
-                    list[currentState.panes.indexOf(index)] = pane
-                    currentState.copy(panes = list)
+                    list[currentState.widgets.indexOf(index)] = pane
+                    currentState.copy(widgets = list)
                 } else {
                     currentState
                 }
@@ -222,7 +223,7 @@ private fun budsState(): DashboardModel {
         batteryLevelMain = 50,
         batteryLevelLeft = 20,
         batteryLevelRight = 70,
-        panes = listOf(
+        widgets = listOf(
             Widget.BooleanSetting(
                 Widget.Properties("ll", "Low Lag Mode"),
                 value = true
@@ -597,7 +598,7 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
                 })
             }
 
-            for (pane in state.panes) {
+            for (pane in state.widgets) {
                 panes += when (pane) {
                     is Widget.BooleanSetting -> {
                         PaneState(PaneState.Color.NEUTRAL, content = {

@@ -159,9 +159,8 @@ class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: Vi
         CoroutineScope(Dispatchers.IO).launch {
             val galleryState = uiState.value
             viewerViewModel.clear()
-            viewerViewModel.update(file, galleryState.objects.size)
+            viewerViewModel.update(file, galleryState.objects.size, getThumbnail(file, -1), getThumbnail(file, 0), getThumbnail(file, 1))
             viewerViewModel.updateMetadata(getMetadata(file))
-            viewerViewModel.updateThumbnails(getThumbnail(file, -1), getThumbnail(file, 0), getThumbnail(file, 1))
 
             fun onCancel() {
                 CoroutineScope(Dispatchers.IO).launch {
@@ -552,7 +551,11 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
     }
     @CalledFromNative
     fun setDashboardPane(pane: Widget) {
-        dashboardModel.setDashboardPane(pane)
+        if (pane.args.group == Widget.Group.LIVEVIEW) {
+            liveviewWorker.updateWidget(pane)
+        } else {
+            dashboardModel.setDashboardPane(pane)
+        }
     }
     @CalledFromNative
     fun setProgressBar(job: Int, v: Int) {
@@ -620,10 +623,8 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
         connectingModel.isSecondaryConnection = true
         connectingModel.lastWiFiApFilter = filter
         connectingModel.lastWiFiSetupOption = setupOption
-        //WiFi.addNetworkToSystem(filter)
         connectingModel.secondaryConnectionJob = CoroutineScope(Dispatchers.IO).launch {
-            // todo: don't switch screen on try again
-            homeModelView.goToScreen(Screen.CONNECT_SECONDARY, false)
+            if (currentScreen != Screen.CONNECT_SECONDARY) homeModelView.goToScreen(Screen.CONNECT_SECONDARY, false)
             setSetupOptionName(setupOption)
             val callback = object : WiFi.WiFiDiscoveryCallback() {
                 override fun failed(reason: String, code: Int) {

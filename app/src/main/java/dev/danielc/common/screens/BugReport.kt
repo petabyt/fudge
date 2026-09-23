@@ -74,12 +74,12 @@ fun submitReport(report: BugReport): Http.Response {
 @PreviewPixel9ProDark
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BugReportDialog(finished: () -> Unit = {}, report: BugReport = BugReport()) {
+fun BugReportDialog(dismiss: () -> Unit = {}, finished: () -> Unit = {}, report: BugReport = BugReport()) {
     var description by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isWorking by remember { mutableStateOf(false) }
     LargeCustomAlertDialog(
-        onDismissRequest = {},
+        onDismissRequest = { dismiss() },
         title = "Report a bug to Daniel",
         icon = {
             if (isWorking) {

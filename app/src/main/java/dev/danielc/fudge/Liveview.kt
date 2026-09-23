@@ -3,8 +3,11 @@ package dev.danielc.fudge
 import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import androidx.compose.foundation.Image
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.viewinterop.AndroidView
 import com.alexvas.rtsp.codec.VideoDecoderSurfaceThread
 import com.alexvas.rtsp.widget.RtspProcessor
@@ -17,10 +20,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import androidx.core.net.toUri
+import dev.danielc.R
+import dev.danielc.common.Widget
+import dev.danielc.common.screens.LiveviewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 
-class ModuleLiveviewModel(val mod: ModuleInstance): BackgroundViewModel(), SurfaceHolder.Callback {
+class ModuleLiveviewModel(val mod: ModuleInstance): LiveviewModel(), SurfaceHolder.Callback {
     val currentFps = MutableStateFlow(0)
     private var isRtsp: Boolean = false
     private var rtspProcessor: RtspProcessor? = null
@@ -106,10 +112,23 @@ class ModuleLiveviewModel(val mod: ModuleInstance): BackgroundViewModel(), Surfa
         rtspProcessor?.stop()
         isRtsp = false
     }
+
+    override fun widgetUpdated(pane: Widget) {
+        updateWidget(pane)
+        mod.propChanged(pane)
+    }
 }
 
 @Composable
-fun FramebufferSurface(modifier: Modifier = Modifier, model: ModuleLiveviewModel) {
+fun FramebufferSurface(modifier: Modifier = Modifier, model: LiveviewModel) {
+    if (model !is ModuleLiveviewModel) {
+        Image(
+            modifier = modifier,
+            painter = painterResource(R.drawable.image),
+            contentDescription = null
+        )
+        return
+    }
     AndroidView(modifier = modifier, factory = { ctx ->
         val view = SurfaceView(ctx)
         view.holder.addCallback(model)

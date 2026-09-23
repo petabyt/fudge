@@ -518,7 +518,7 @@ fun Gallery(modifier: Modifier = Modifier, state: FilesystemState, requestLoad: 
         }
     }
 
-    // Change
+    // Scale thumbnails on zoom gesture
     var scale by remember { mutableFloatStateOf(1f) }
     var isZooming by remember { mutableStateOf(false) }
     val gesture = Modifier.pointerInput(Unit) {

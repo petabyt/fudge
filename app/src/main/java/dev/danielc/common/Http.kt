@@ -5,7 +5,6 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
-import kotlin.jvm.Throws
 
 object Http {
     private const val CONNECT_TIMEOUT_MS: Int = 10000
@@ -41,9 +40,9 @@ object Http {
             connection.readTimeout = READ_TIMEOUT_MS
 
             connection.setRequestProperty("Accept", "application/json")
-//            if (body != null) {
-//                connection.setRequestProperty("Content-Type", "application/json; utf-8")
-//            }
+            if (body != null && !headers.containsKey("Content-Type")) {
+                connection.setRequestProperty("Content-Type", "application/json; utf-8")
+            }
 
             headers.forEach { (key, value) ->
                 connection.setRequestProperty(key, value)

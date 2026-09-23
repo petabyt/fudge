@@ -40,6 +40,12 @@ android {
             resValue("string", "app_name", "FantasyFudge")
             isDefault = true
         }
+        // Legacy playstore manifest
+        create("fujiapp") {
+            dimension = "buildType"
+            applicationId = "dev.danielc.fujiapp"
+            resValue("string", "app_name", "Fudge")
+        }
         create("nightly") {
             dimension = "buildType"
             applicationId = "dev.danielc.fantasyfudge.nightly"
@@ -57,16 +63,18 @@ android {
     }
     buildTypes {
         release {
-//            isDebuggable = true
-//            isJniDebuggable = true
-//            ndk {
-//                debugSymbolLevel = "FULL"
-//            }
-//            isMinifyEnabled = false
-//            proguardFiles(
-//                getDefaultProguardFile("proguard-android-optimize.txt"),
-//                "proguard-rules.pro"
-//            )
+            if (false) {
+                isDebuggable = true
+                isJniDebuggable = true
+                ndk {
+                    debugSymbolLevel = "FULL"
+                }
+                isMinifyEnabled = false
+                proguardFiles(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+                )
+            }
             signingConfig = signingConfigs.getByName("release")
         }
     }
@@ -123,6 +131,8 @@ dependencies {
     rootProject.extra["noNativeModule"] = true
     implementation(project(":libpak"))
     implementation(project(":library-client-rtsp"))
+//    implementation(libs.androidx.compose.foundation)
+//    implementation(libs.androidx.compose.ui.unit)
     //implementation(libs.androidx.material3)
 
     // libs

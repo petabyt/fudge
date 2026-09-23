@@ -10,6 +10,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.navigation.compose.rememberNavController
 import dev.danielc.BuildConfig
 import dev.danielc.common.ModuleInstanceRequest
@@ -101,14 +105,18 @@ class MainActivity : ComponentActivity(), ComponentCallbacks2 {
         setContent {
             val navController = rememberNavController()
             MainNav(navController)
-            LaunchedEffect(Unit) {
-                externalEventsShared.collect {
-                    navController.navigate(ModuleInstanceRequest(it.name, targetIndex = 0, chosenSetupOption = it.setupOption))
-                }
-            }
-            if (false) {
+            var hasLaunched by rememberSaveable { mutableStateOf(false) }
+            if (!hasLaunched) {
                 LaunchedEffect(Unit) {
-                    navController.navigate(ModuleInstanceRequest("goveelife", 0))
+                    hasLaunched = true
+                    externalEventsShared.collect {
+                        navController.navigate(ModuleInstanceRequest(it.name, targetIndex = 0, chosenSetupOption = it.setupOption))
+                    }
+                }
+                if (false && BuildInfo.isDebug) {
+                    LaunchedEffect(Unit) {
+                        startModule("dummymod", "camera")
+                    }
                 }
             }
         }
