@@ -268,13 +268,16 @@ class ViewerModel(val showSaveButton: Boolean = true, val showLoadDialog: Boolea
         }
     }
 
-    fun update(file: FileHandle, numberOfItems: Int) {
-        _viewerState.value = ViewerState(
-            handle = file,
-            numberOfItems = numberOfItems,
-            showSaveButton = showSaveButton,
-            showLoadDialog = showLoadDialog,
-        )
+    fun update(file: FileHandle, numberOfItems: Int, left: ImageBitmap? = null, main: ImageBitmap? = null, right: ImageBitmap? = null) {
+        _viewerState.update {
+            ViewerState(
+                handle = file,
+                numberOfItems = numberOfItems,
+                showSaveButton = showSaveButton,
+                showLoadDialog = showLoadDialog,
+                bitmap = main, bitmapLeft = left, bitmapRight = right,
+            )
+        }
     }
     fun updateMetadata(metadata: FileMetadata?) {
         val filename = metadata?.filename

@@ -53,9 +53,8 @@ class LocalGalleryViewModel: GalleryViewModel(checkFileSaved = false) {
     override fun itemClicked(ref: GalleryObjectReference) {
         val file = files[ref.index]
         val handle = FileHandle(ref.index)
-        viewer.update(handle, files.size)
+        viewer.update(handle, files.size, getThumbnail(handle, -1), getThumbnail(handle, 0), getThumbnail(handle, 1))
         viewer.updateMetadata(file.metadata)
-        viewer.updateThumbnails(getThumbnail(handle, -1), getThumbnail(handle, 0), getThumbnail(handle, 1))
         if (file.metadata.getMimeType().isVideo()) {
             viewer.setError("Video not supported in viewer yet")
         } else {
