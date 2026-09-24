@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -319,13 +320,12 @@ fun SettingsDialog(model: DashboardModel, close: () -> Unit = {}) {
     Dialog(onDismissRequest = {
         close()
     }) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.5f),
-            shape = RoundedCornerShape(16.dp),
-        ) {
-            Column(Modifier.fillMaxSize().padding(10.dp)) {
+        Card(modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.5f), shape = RoundedCornerShape(16.dp),) {
+            Column(Modifier
+                .fillMaxSize()
+                .padding(10.dp)) {
                 var terminalCommand by remember { mutableStateOf("help") }
                 TextField(
                     leadingIcon = {
@@ -333,10 +333,10 @@ fun SettingsDialog(model: DashboardModel, close: () -> Unit = {}) {
                     },
                     value = terminalCommand,
                     onValueChange = { terminalCommand = it },
-                    label = { Text("Terminal command") }
+                    label = { Text(stringResource(R.string.terminal_command)) }
                 )
                 Button(onClick = {model.runCommand(terminalCommand)}) {
-                    Text("Execute")
+                    Text(stringResource(R.string.execute))
                 }
             }
         }
@@ -348,13 +348,22 @@ fun DropdownDialog(close: () -> Unit = {}, dropdownSetting: Widget.DropdownSetti
     Dialog(onDismissRequest = {
         close()
     }) {
-        Card(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.5f)) {
+        Card(modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.5f)) {
             Text(dropdownSetting.args.title, modifier = Modifier.padding(10.dp))
             LazyColumn {
                 itemsIndexed(dropdownSetting.options) { i, item ->
-                    Box(Modifier.fillMaxWidth().clickable(onClick = {
-                        onSelect(i)
-                    }).background(if (i == dropdownSetting.index) MaterialTheme.colorScheme.surfaceContainer.copy(0.5f) else MaterialTheme.colorScheme.surfaceContainer)) {
+                    Box(Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = {
+                            onSelect(i)
+                        })
+                        .background(
+                            if (i == dropdownSetting.index) MaterialTheme.colorScheme.surfaceContainer.copy(
+                                0.5f
+                            ) else MaterialTheme.colorScheme.surfaceContainer
+                        )) {
                         Row(Modifier.padding(20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(item)
                         }
@@ -406,7 +415,7 @@ private fun OverviewPane(state: DashboardState, model: DashboardModel, showSetti
             if (state.firmwareVersion != null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(painter = painterResource(R.drawable.outline_developer_board_24), contentDescription = null)
-                    Text("Firmware version: ${state.firmwareVersion}")
+                    Text(stringResource(R.string.firmware_version, state.firmwareVersion))
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -417,12 +426,12 @@ private fun OverviewPane(state: DashboardState, model: DashboardModel, showSetti
                 Button(onClick = { model.save() }, modifier = Modifier, enabled = !state.isSaved) {
                     Icon(painterResource(R.drawable.outline_save_24), contentDescription = null)
                     Spacer(Modifier.width(2.dp))
-                    Text(if (state.isSaved) "Saved" else "Save")
+                    Text(if (state.isSaved) stringResource(R.string.saved) else stringResource(R.string.save))
                 }
                 Button(onClick = { model.disconnect() }, modifier = Modifier, colors = errorButtonColors()) {
                     Icon(painterResource(R.drawable.outline_close_24), contentDescription = null)
                     Spacer(Modifier.width(2.dp))
-                    Text("Disconnect")
+                    Text(stringResource(R.string.disconnect))
                 }
             }
         }
@@ -431,7 +440,9 @@ private fun OverviewPane(state: DashboardState, model: DashboardModel, showSetti
 
 @Composable
 private fun CardPane(e: StorageInfo, model: DashboardModel) {
-    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+    Box(Modifier
+        .fillMaxWidth()
+        .clip(RoundedCornerShape(12.dp))
         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         .clickable(onClick = { model.onStorageDeviceClicked(e.name) })
     ) {
@@ -507,7 +518,9 @@ private fun RenderPanes(panes: List<PaneState>) {
                     }
                 }
                 DashboardPane(
-                    Modifier.fillMaxSize().wrapContentHeight(), // ?? not expanding pane size
+                    Modifier
+                        .fillMaxSize()
+                        .wrapContentHeight(), // ?? not expanding pane size
                     bg = bg,
                     fg = fg,
                     onClick = pane.onClick,
@@ -561,7 +574,9 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
         Column(
-            modifier = modifier.padding(10.dp).widthIn(max = 600.dp),
+            modifier = modifier
+                .padding(10.dp)
+                .widthIn(max = 600.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OverviewPane(state, model, { showSettings = true })
@@ -628,7 +643,10 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
                     is Widget.DropdownSetting -> {
                         PaneState(PaneState.Color.NEUTRAL, content = {
                             Text(pane.args.title, style = MaterialTheme.typography.titleSmall)
-                            Row(Modifier.background(MaterialTheme.colorScheme.surface).padding(10.dp).fillMaxWidth()) {
+                            Row(Modifier
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(10.dp)
+                                .fillMaxWidth()) {
                                 Text(pane.options[pane.index])
                                 Spacer(Modifier.weight(1f))
                                 Icon(painterResource(R.drawable.outline_arrow_forward_24), contentDescription = null)

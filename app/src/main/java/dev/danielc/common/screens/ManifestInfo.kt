@@ -4,13 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -44,7 +42,7 @@ fun ManifestInfoScreen(manifest: ModuleManifest = dummyManifestList[0], close: (
                 TopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(),
                     title = {
-                        Text("Manifest Info")
+                        Text(stringResource(R.string.manifest_info))
                     },
                     navigationIcon = {
                         IconButton(onClick = {
@@ -60,14 +58,16 @@ fun ManifestInfoScreen(manifest: ModuleManifest = dummyManifestList[0], close: (
             },
         ) { innerPadding ->
             Box(Modifier.padding(innerPadding)) {
-                Column(Modifier.fillMaxSize().padding(10.dp)) {
+                Column(Modifier
+                    .fillMaxSize()
+                    .padding(10.dp)) {
                     Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text(manifest.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                         Button(onClick = {}, enabled = false) {
-                            Text("Update")
+                            Text(stringResource(R.string.update))
                         }
                         Button(onClick = {}, colors = errorButtonColors(), enabled = false) {
-                            Text("Delete")
+                            Text(stringResource(R.string.delete))
                         }
                     }
                     if (manifest.author != null) Text("Author: ${manifest.author}")
@@ -90,11 +90,11 @@ fun ManifestInfoScreen(manifest: ModuleManifest = dummyManifestList[0], close: (
                             Button(modifier = Modifier.weight(1f), onClick = {
                                 uriHandler.openUri(manifest.website)
                             }) {
-                                Text("Visit website")
+                                Text(stringResource(R.string.visit_website))
                             }
                         }
                         Button(modifier = Modifier.weight(1f), onClick = {}, enabled = false) {
-                            Text("Report bugs")
+                            Text(stringResource(R.string.report_bugs))
                         }
                     }
                 }

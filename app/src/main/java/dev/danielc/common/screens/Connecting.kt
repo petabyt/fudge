@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.toClipEntry
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -65,7 +66,7 @@ fun ModuleErrorScreen(back: () -> Unit = {}, state: ConsoleState = ConsoleState(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Module Failure") },
+                    title = { Text(stringResource(R.string.module_failure)) },
                     navigationIcon = {
                         IconButton(onClick = { back() }) {
                             Icon(painterResource(R.drawable.outline_arrow_back_24), contentDescription = null)
@@ -91,7 +92,7 @@ fun ModuleErrorScreen(back: () -> Unit = {}, state: ConsoleState = ConsoleState(
                 .fillMaxSize()
                 .padding(innerPadding)) {
                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Module failed to initialize. This is a bug.")
+                    Text(stringResource(R.string.module_failed_to_initialize_this_is_a_bug))
                     Console(Modifier.fillMaxSize(), state)
                 }
             }
@@ -151,7 +152,7 @@ fun ConnectingScreen(back: () -> Unit = {}, model: ConnectingScreenModel = Conne
             Button({
                 model.onTryAgain()
             }, enabled = !state.disableTryAgain) {
-                Text("Try Again")
+                Text(stringResource(R.string.try_again))
             }
         }
     }
@@ -195,11 +196,17 @@ fun ConnectingScreen(back: () -> Unit = {}, model: ConnectingScreenModel = Conne
                 .padding(innerPadding)) {
                 Column(Modifier.fillMaxSize()) {
                     if (state.action == ConnectingRequiredAction.TURN_ON_WIFI) {
-                        ActionMessage(painterResource(R.drawable.outline_wifi_24), "Please turn on WiFi")
+                        ActionMessage(painterResource(R.drawable.outline_wifi_24),
+                            stringResource(R.string.please_turn_on_wifi)
+                        )
                     } else if (state.action == ConnectingRequiredAction.TURN_ON_BLUETOOTH) {
-                        ActionMessage(painterResource(R.drawable.outline_bluetooth_24), "Please turn on Bluetooth")
+                        ActionMessage(painterResource(R.drawable.outline_bluetooth_24),
+                            stringResource(R.string.please_turn_on_bluetooth)
+                        )
                     } else if (state.action == ConnectingRequiredAction.ACCEPT_PERMISSION) {
-                        ActionMessage(painterResource(R.drawable.outline_user_attributes_24), "Permission required to connect to this device")
+                        ActionMessage(painterResource(R.drawable.outline_user_attributes_24),
+                            stringResource(R.string.permission_required_to_connect_to_this_device)
+                        )
                     } else {
                         Column(Modifier.padding(10.dp)) {
                             Row(Modifier
@@ -224,13 +231,13 @@ fun ConnectingScreen(back: () -> Unit = {}, model: ConnectingScreenModel = Conne
                             Button(onClick = {
                                 model.onTryAgain()
                             }, Modifier.fillMaxWidth(), enabled = !state.tryAgainDisabled) {
-                                Text("Try again")
+                                Text(stringResource(R.string.try_again))
                             }
                             Button(onClick = {
                                 model.onCancel()
                                 back()
                             }, Modifier.fillMaxWidth(), colors = errorButtonColors()) {
-                                Text("Cancel")
+                                Text(stringResource(R.string.cancel))
                             }
                             if (state.transport == ModuleManifest.Transport.LOCAL_NETWORK_UDP) {
                                 Column(Modifier
@@ -253,18 +260,25 @@ fun ConnectingScreen(back: () -> Unit = {}, model: ConnectingScreenModel = Conne
                     }
                 }
                 state.loadingPopupText?.let {
-                    Box(Modifier.clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest).align(Alignment.Center)) {
+                    Box(Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        .align(Alignment.Center)) {
                         Column(Modifier.padding(20.dp)) {
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(it)
                                 CircularProgressIndicator(Modifier.size(20.dp))
                             }
-                            Text("Might take a while", style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.might_take_a_while), style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
                 state.userInstruction?.let {
-                    Box(Modifier.padding(10.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest).align(Alignment.BottomCenter)) {
+                    Box(Modifier
+                        .padding(10.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        .align(Alignment.BottomCenter)) {
                         Row(Modifier
                             .fillMaxWidth()
                             .padding(20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -53,7 +53,7 @@ object BuildInfo {
     val isDebug = BuildConfig.DEBUG
     val packageName = BuildConfig.APPLICATION_ID
     val version = BuildConfig.VERSION_NAME
-    val osVersion = Build.VERSION.SDK_INT
+    val osVersion: String = "Android ${Build.VERSION.SDK_INT}"
 }
 
 class MainActivity : ComponentActivity(), ComponentCallbacks2 {

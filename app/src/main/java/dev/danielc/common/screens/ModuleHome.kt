@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -198,7 +199,7 @@ fun ModuleHomeScreen(module: ModuleInstance, hostNavController: NavController) {
                         )
                     },
                     label = {
-                        Text(screen.getName())
+                        Text(stringResource(screen.getName()))
                     }
                 )
             },

@@ -9,6 +9,7 @@ import android.graphics.Matrix
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.room.Room
@@ -62,6 +63,10 @@ object AndroidRuntime {
     fun logGlobalLine(s: String) {
         Log.d("pak_global_log", s)
         Runtime.logGlobalLine(s)
+    }
+
+    fun stringHelper(@StringRes id: Int): String {
+        return Pak.getActivity().getString(id)
     }
 
     @JvmStatic

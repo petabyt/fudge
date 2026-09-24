@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -46,7 +47,9 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ClickableCard(text: String, icon: Painter, onClick: () -> Unit = {}) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    Card(Modifier
+        .fillMaxWidth()
+        .clickable(onClick = onClick)) {
         Row(Modifier.padding(20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Icon(icon, contentDescription = null)
             Text(text)
@@ -65,7 +68,7 @@ fun SettingsScreen(navController: NavController = rememberNavController()) {
             topBar = {
                 TopAppBar(
                     title = {
-                        Text("Settings")
+                        Text(stringResource(R.string.settings))
                     },
                     navigationIcon = {
                         IconButton(onClick = {
@@ -78,7 +81,10 @@ fun SettingsScreen(navController: NavController = rememberNavController()) {
             },
         ) { innerPadding ->
             Box(Modifier.padding(innerPadding)) {
-                Column(Modifier.fillMaxSize().padding(10.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier
+                    .fillMaxSize()
+                    .padding(10.dp)
+                    .verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     TextField(modifier = Modifier.fillMaxWidth(),
                         leadingIcon = {
                             Icon(painterResource(R.drawable.baseline_download_24), contentDescription = null)
@@ -92,10 +98,10 @@ fun SettingsScreen(navController: NavController = rememberNavController()) {
                                 AndroidRuntime.getDatabase().settingsDao().save(settingsValue.copy(downloadsLocation = it))
                             }
                         },
-                        label = { Text("Downloads Location") }
+                        label = { Text(stringResource(R.string.downloads_location)) }
                     )
                     Row(Modifier, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Store downloads in per-device subfolders")
+                        Text(stringResource(R.string.store_downloads_in_per_device_subfolders))
                         Switch(settingsValue.perDeviceSubFolder, onCheckedChange = {
                             CoroutineScope(Dispatchers.IO).launch {
                                 AndroidRuntime.getDatabase().settingsDao().save(settingsValue.copy(perDeviceSubFolder = it))
@@ -103,7 +109,7 @@ fun SettingsScreen(navController: NavController = rememberNavController()) {
                         })
                     }
                     HorizontalDivider()
-                    ClickableCard("Info", painterResource(R.drawable.outline_info_24)) {
+                    ClickableCard(stringResource(R.string.info), painterResource(R.drawable.outline_info_24)) {
                         navController.navigate("info")
                     }
 //                    ClickableCard("Help", painterResource(R.drawable.baseline_help_24)) {
@@ -112,19 +118,19 @@ fun SettingsScreen(navController: NavController = rememberNavController()) {
 //                    ClickableCard("Send feedback", painterResource(R.drawable.baseline_bug_report_24)) {
 //                        uriHandler.openUri("https://google.com/")
 //                    }
-                    ClickableCard("Debug Console", painterResource(R.drawable.baseline_terminal_24)) {
+                    ClickableCard(stringResource(R.string.debug_console), painterResource(R.drawable.baseline_terminal_24)) {
                         navController.navigate("console")
                     }
                     HorizontalDivider()
                     Button(onClick = {
                         FileLayer.requestExternalImagesPermission()
                     }) {
-                        Text("Grant access to all local images (optional)")
+                        Text(stringResource(R.string.grant_access_to_all_local_images_optional))
                     }
                     Button(onClick = {
                         AndroidRuntime.resetDatabase()
                     }) {
-                        Text("Reset all settings")
+                        Text(stringResource(R.string.reset_all_settings))
                     }
                 }
             }

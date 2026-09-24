@@ -63,6 +63,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
@@ -373,44 +374,51 @@ abstract class GalleryViewModel(val checkFileSaved: Boolean = true, var isThumbn
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GalleryThumbnail(obj: GalleryObject?, onClick: () -> Unit = {}, scale: Float = 1f) {
-    val boxModifier = Modifier.aspectRatio(1f).background(MaterialTheme.colorScheme.surfaceContainer)
+    val boxModifier = Modifier
+        .aspectRatio(1f)
+        .background(MaterialTheme.colorScheme.surfaceContainer)
     CompositionLocalProvider(LocalRippleConfiguration provides FudgeRippleConfig(Color.White)) {
         Box(
             boxModifier
-            .combinedClickable(
-                onClick = {
-                    onClick()
-                },
-                onLongClick = {
-                    onClick()
-                }
-            )
-            .indication(
-                indication = ripple(),
-                interactionSource = remember { MutableInteractionSource() }
-            )
-            .graphicsLayer(clip = true)
+                .combinedClickable(
+                    onClick = {
+                        onClick()
+                    },
+                    onLongClick = {
+                        onClick()
+                    }
+                )
+                .indication(
+                    indication = ripple(),
+                    interactionSource = remember { MutableInteractionSource() }
+                )
+                .graphicsLayer(clip = true)
         ) {
             if (obj != null) {
                 val icon = MimeType.getIcon(obj.metadata?.getMimeType())
                 if (obj.thumbnail != null) {
-                    Image(modifier = Modifier.fillMaxSize().graphicsLayer(
-                        scaleX = scale,
-                        scaleY = scale,
-                    ), bitmap = obj.thumbnail, contentDescription = null, contentScale = ContentScale.Crop)
+                    Image(modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer(
+                            scaleX = scale,
+                            scaleY = scale,
+                        ), bitmap = obj.thumbnail, contentDescription = null, contentScale = ContentScale.Crop)
                 }
                 if (obj.thumbnail == null || obj.metadata?.getMimeType()?.isVideo() ?: false) {
                     Icon(
-                        modifier = Modifier.align(Alignment.Center).size(45.dp),
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(45.dp),
                         painter = painterResource(icon),
                         contentDescription = null,
                     )
                 }
                 val filename = obj.metadata?.filename
                 if (filename != null) {
-                    Text(filename, modifier = Modifier.align(Alignment.BottomCenter)
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
-                            .padding(horizontal = 4.dp),
+                    Text(filename, modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
+                        .padding(horizontal = 4.dp),
                         lineHeight = TextUnit(10f, TextUnitType.Sp),
                         color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 8.sp,
@@ -421,12 +429,18 @@ private fun GalleryThumbnail(obj: GalleryObject?, onClick: () -> Unit = {}, scal
                     Icon(
                         painterResource(R.drawable.outline_download_done_24),
                         contentDescription = null,
-                        modifier = Modifier.align(Alignment.TopEnd).size(15.dp) .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f)).padding(2.dp)
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(15.dp)
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
+                            .padding(2.dp)
                     )
                 }
             }
             if (!GalleryViewModel.objectIsFulfilled(obj)) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center).size(35.dp), color = ProgressIndicatorDefaults.linearColor.copy(0.5f))
+                CircularProgressIndicator(modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(35.dp), color = ProgressIndicatorDefaults.linearColor.copy(0.5f))
             }
         }
     }
@@ -486,10 +500,14 @@ fun Gallery(modifier: Modifier = Modifier, state: FilesystemState, requestLoad: 
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(5.dp),
-            modifier = Modifier.fillMaxWidth().padding(2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(2.dp),
         ) {
             if (state.storageName != null) {
-                Box(Modifier.padding(4.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp))) {
+                Box(Modifier
+                    .padding(4.dp)
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp))) {
                     Text(state.storageName, color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.padding(6.dp))
                 }
             }
@@ -546,7 +564,9 @@ fun Gallery(modifier: Modifier = Modifier, state: FilesystemState, requestLoad: 
         }
     }
 
-    Box(modifier = modifier.fillMaxSize().then(gesture)) {
+    Box(modifier = modifier
+        .fillMaxSize()
+        .then(gesture)) {
         val listState = rememberLazyGridState()
         PullToRefreshBox(
             state = rememberPullToRefreshState(),
@@ -590,10 +610,12 @@ fun Gallery(modifier: Modifier = Modifier, state: FilesystemState, requestLoad: 
                 } else {
                     item(span = { GridItemSpan(rows) }) {
                         Row(
-                            Modifier.fillMaxWidth().padding(10.dp),
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
                             horizontalArrangement = Arrangement.Center
                         ) {
-                            Text("No files are present.")
+                            Text(stringResource(R.string.no_files_are_present))
                         }
                     }
                 }

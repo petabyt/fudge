@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.danielc.R
@@ -47,7 +48,7 @@ fun DisconnectedScreen(reason: String = "Reason: Failed to connect - (Disconnect
                 TopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(),
                     title = {
-                        Text("Disconnected")
+                        Text(stringResource(R.string.disconnected))
                     },
                     navigationIcon = {
                         IconButton(onClick = {
@@ -62,7 +63,9 @@ fun DisconnectedScreen(reason: String = "Reason: Failed to connect - (Disconnect
                 )
             },
         ) { innerPadding ->
-            Column(Modifier.fillMaxSize().padding(innerPadding)) {
+            Column(Modifier
+                .fillMaxSize()
+                .padding(innerPadding)) {
                 Column(Modifier.padding(10.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(modifier = Modifier.weight(1f), onClick = {
@@ -70,12 +73,12 @@ fun DisconnectedScreen(reason: String = "Reason: Failed to connect - (Disconnect
                         }) {
                             Icon(painterResource(R.drawable.baseline_bug_report_24), contentDescription = null)
                             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                            Text("Report bug")
+                            Text(stringResource(R.string.report_bug))
                         }
                         Button(modifier = Modifier.weight(1f), onClick = {
                             backToMainScreen()
                         }) {
-                            Text("Exit")
+                            Text(stringResource(R.string.exit))
                         }
                     }
                 }

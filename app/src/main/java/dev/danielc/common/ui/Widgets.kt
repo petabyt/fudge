@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -209,7 +210,7 @@ fun LargeCustomAlertDialog(
 fun DeleteDialog(nameOfDevice: String = "FooBar", yes: () -> Unit = {}, no: () -> Unit = {}) {
     AlertDialog(
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        title = { Text(text = "Delete") },
+        title = { Text(text = stringResource(R.string.delete)) },
         text = { Text(text = "Delete ${nameOfDevice}?") },
         onDismissRequest = { no() },
         confirmButton = {
@@ -226,7 +227,7 @@ fun DisconnectDialog(nameOfDevice: String = "FooBar", yes: () -> Unit = {}, no: 
     AlertDialog(
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         title = {
-            Text(text = "Disconnect")
+            Text(stringResource(R.string.disconnect))
         },
         text = {
             Text(text = "Disconnect from ${nameOfDevice}?")
@@ -240,7 +241,7 @@ fun DisconnectDialog(nameOfDevice: String = "FooBar", yes: () -> Unit = {}, no: 
                     yes()
                 }
             ) {
-                Text("Yes")
+                Text(stringResource(R.string.yes))
             }
         },
         dismissButton = {
@@ -249,7 +250,7 @@ fun DisconnectDialog(nameOfDevice: String = "FooBar", yes: () -> Unit = {}, no: 
                     no()
                 }
             ) {
-                Text("No")
+                Text(stringResource(R.string.no))
             }
         }
     )

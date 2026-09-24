@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,7 +40,6 @@ import dev.danielc.R
 import dev.danielc.common.BackgroundViewModel
 import dev.danielc.common.Command
 import dev.danielc.common.ModuleInstance
-import dev.danielc.common.ui.PreviewPixel9ProDark
 import dev.danielc.common.ui.PreviewTabletDark
 import dev.danielc.common.ui.theme.FudgeTheme
 import dev.danielc.common.ui.theme.errorIconButtonColors
@@ -118,7 +118,7 @@ fun Intervalometer(modifier: Modifier = Modifier, model: IntervalometerModel) {
                 ),
                 value = shotsToTake,
                 onValueChange = { shotsToTake = it },
-                label = { Text("How many shots to take") }
+                label = { Text(stringResource(R.string.how_many_shots_to_take)) }
             )
             TextField(
                 leadingIcon = {
@@ -129,7 +129,7 @@ fun Intervalometer(modifier: Modifier = Modifier, model: IntervalometerModel) {
                 ),
                 value = secondsInBetweenShots,
                 onValueChange = { secondsInBetweenShots = it },
-                label = { Text("Seconds inbetween each shot") }
+                label = { Text(stringResource(R.string.seconds_inbetween_each_shot)) }
             )
 
             Text("Status: ${status}")
@@ -191,11 +191,15 @@ fun Intervalometer(modifier: Modifier = Modifier, model: IntervalometerModel) {
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         if (minWidth < minHeight) {
-            Column(modifier.padding(10.dp).fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(modifier
+                .padding(10.dp)
+                .fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
                 layout(Modifier.weight(1f))
             }
         } else {
-            Row(modifier.padding(10.dp).fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier
+                .padding(10.dp)
+                .fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                 layout(Modifier.weight(1f))
             }
         }

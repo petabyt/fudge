@@ -96,12 +96,12 @@ enum class Device(val id: String) {
         }
     }
 
-    fun getReadableName(): String {
+    fun getReadableName(): Int {
         return when (this) {
-            PROFESSIONAL_CAMERA -> "Camera"
-            DASHCAM -> "Dashcam"
-            EARBUDS -> "Pair of Earbuds"
-            else -> "Device"
+            PROFESSIONAL_CAMERA -> R.string.camera
+            DASHCAM -> R.string.dashcam
+            EARBUDS -> R.string.pair_of_earbuds
+            else -> R.string.device
         }
     }
 }
@@ -203,19 +203,18 @@ enum class Screen(val strId: String, val id: Int) {
         }
     }
 
-    fun getName(): String {
+    fun getName(): Int {
         return when (this) {
-            CONNECT -> "Connect"
-            CONSOLE -> "Console"
-            DASHBOARD -> "Dashboard"
-            FILE_GALLERY -> "Gallery"
-            FILE_VIEWER -> "Viewer"
-            GEOTAGGING -> "Geotagging"
-            LIVEVIEW -> "Liveview"
-            LIVE_FEED -> "Live feed"
-            INTERVALOMETER -> "Intervalometer"
-            NONE -> "None"
-            else -> "?"
+            CONNECT -> R.string.screen_connect
+            CONSOLE -> R.string.screen_console
+            DASHBOARD -> R.string.screen_dashboard
+            FILE_GALLERY -> R.string.screen_gallery
+            FILE_VIEWER -> R.string.screen_viewer
+            GEOTAGGING -> R.string.screen_geotagging
+            LIVEVIEW -> R.string.screen_liveview
+            LIVE_FEED -> R.string.screen_live_feed
+            INTERVALOMETER -> R.string.screen_intervalometer
+            else -> R.string.screen_unknown
         }
     }
 }

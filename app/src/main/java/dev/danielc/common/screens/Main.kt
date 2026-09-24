@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -108,7 +110,7 @@ fun InstanceSetup(options: List<ModuleManifest.SetupOption> = dummyOptions, onCl
             topBar = {
                 TopAppBar(
                     title = {
-                        Text("Choose a mode to proceed")
+                        Text(stringResource(R.string.choose_a_mode_to_proceed))
                     },
                     navigationIcon = {
                         IconButton(onClick = {
@@ -123,7 +125,10 @@ fun InstanceSetup(options: List<ModuleManifest.SetupOption> = dummyOptions, onCl
                 )
             },
         ) { innerPadding ->
-            LazyColumn(Modifier.padding(innerPadding).padding(10.dp).fillMaxSize(),
+            LazyColumn(Modifier
+                .padding(innerPadding)
+                .padding(10.dp)
+                .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp, alignment = Alignment.Top)) {
                 items(options) { e ->
@@ -233,16 +238,20 @@ fun SavedDeviceCard(target: ModuleManifest.Target, transport: ModuleManifest.Tra
                         }), contentDescription = null)
                     }
                     if (isNearby) {
-                        Box(Modifier.size(7.dp).clip(CircleShape).background(Color.Green))
+                        Box(Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(Color.Green))
                         Text(
-                            text = "Nearby",
+                            text = stringResource(R.string.nearby),
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
                         )
                     }
                 }
                 val diff = System.currentTimeMillis().milliseconds.toLong(DurationUnit.MILLISECONDS) - dev.lastSeenTimestamp
-                Text("Last connected ${diff / 1000 / 60 / 60} hours ago")
+                Text(
+                    stringResource(R.string.last_connected_hours_ago, diff / 1000 / 60 / 60))
             }
         }
     }
@@ -276,7 +285,9 @@ fun MainConnectScreen(navController: NavController, modifier: Modifier = Modifie
         },
         modifier = modifier
     ) {
-        Column(Modifier.fillMaxSize().padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier
+            .fillMaxSize()
+            .padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (settingsValue.showWelcomeDialog) {
                     item {
@@ -285,8 +296,8 @@ fun MainConnectScreen(navController: NavController, modifier: Modifier = Modifie
                         }) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
-                                    Text("FantasyFudge pre-release", style = MaterialTheme.typography.titleMedium)
-                                    Text("Introduction and what this app does")
+                                    Text(stringResource(R.string.fantasyfudge_pre_release), style = MaterialTheme.typography.titleMedium)
+                                    Text(stringResource(R.string.introduction_and_what_this_app_does))
                                 }
                                 IconButton(onClick = {
                                     CoroutineScope(Dispatchers.IO).launch {
@@ -304,7 +315,7 @@ fun MainConnectScreen(navController: NavController, modifier: Modifier = Modifie
                 }
                 if (deviceList.isNotEmpty()) {
                     item {
-                        Text("Bonded devices:")
+                        Text(stringResource(R.string.bonded_devices))
                     }
                 }
                 items(deviceList, key = { isRefreshing }) { dev ->
@@ -318,7 +329,7 @@ fun MainConnectScreen(navController: NavController, modifier: Modifier = Modifie
                 }
                 if (savedDevices.isNotEmpty()) {
                     item {
-                        Text("Connect again:")
+                        Text(stringResource(R.string.connect_again))
                     }
                 }
                 items(savedDevices) { dev ->
@@ -340,7 +351,7 @@ fun MainConnectScreen(navController: NavController, modifier: Modifier = Modifie
                     }
                 }
                 item {
-                    Text("Select a type of device to connect to:")
+                    Text(stringResource(R.string.select_a_type_of_device_to_connect_to))
                 }
                 var targets = mutableListOf<Pair<ModuleManifest.Target, ModuleManifest>>()
                 for (manifest in manifestList) {
@@ -376,6 +387,7 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
     val subNavController = rememberNavController()
     val haptic = LocalHapticFeedback.current
     val navBackStackEntry by subNavController.currentBackStackEntryAsState()
+    var showFeedbackDialog by rememberSaveable { mutableStateOf(false) }
 
     data class NavItem(
         val icon: Int,
@@ -383,12 +395,15 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
         val route: String,
     )
     val items = listOf(
-        NavItem(R.drawable.outline_devices_other_24, "Connect", "connect"),
-        NavItem(R.drawable.outline_photo_library_24, "Downloads", "local-gallery"),
-        NavItem(R.drawable.outline_deployed_code_24, "Modules", "modules"),
+        NavItem(R.drawable.outline_devices_other_24, stringResource(R.string.connect), "connect"),
+        NavItem(R.drawable.outline_photo_library_24, stringResource(R.string.downloads), "local-gallery"),
+        NavItem(R.drawable.outline_deployed_code_24, stringResource(R.string.modules), "modules"),
     )
 
     return FudgeTheme {
+        if (showFeedbackDialog) {
+            FeedbackDialog({ showFeedbackDialog = false })
+        }
         DynamicScaffold(
             noTopBar = navBackStackEntry?.destination?.route == "local-gallery",
             topBar = {
@@ -397,19 +412,30 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
                         colors = TopAppBarDefaults.topAppBarColors(),
                         title = {
                             if (BuildInfo.isDebug) {
-                                Text("FantasyFudge (Debug)")
+                                Text(stringResource(R.string.fantasyfudge_debug))
                             } else if (BuildInfo.isNightly) {
-                                Text("FantasyFudge (Nightly)")
+                                Text(stringResource(R.string.fantasyfudge_nightly))
                             }
                         },
                         navigationIcon = {
                             Image(
                                 painterResource(R.drawable.icon),
                                 contentDescription = null,
-                                Modifier.size(40.dp).padding(5.dp).clip(CircleShape)
+                                Modifier
+                                    .size(40.dp)
+                                    .padding(5.dp)
+                                    .clip(CircleShape)
                             )
                         },
                         actions = {
+                            IconButton(onClick = {
+                                showFeedbackDialog = true
+                            }) {
+                                Icon(
+                                    painter = painterResource(R.drawable.outline_feedback_24),
+                                    contentDescription = null
+                                )
+                            }
                             IconButton(onClick = {
                                 navController.navigate("settings")
                             }) {
@@ -539,7 +565,7 @@ fun MainNav(navController: NavHostController) {
             val state by Runtime.mainLog.uiState.collectAsStateWithLifecycle()
             ConsoleScreen({
                 navController.navigateUp()
-            }, state, "Debug Console")
+            }, state, stringResource(R.string.debug_console))
         }
         composable("about") {
             AboutScreen(navController)
