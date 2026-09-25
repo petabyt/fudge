@@ -197,5 +197,8 @@ fun manifestFromJson(text: String, filename: String): ModuleManifest? {
         logGlobalLine("Error parsing manifest $filename")
         logGlobalLine(e.message ?: "")
         return null
+    } catch (e: Exception) {
+        logGlobalLine(e.message ?: "")
+        return null
     }
 }
