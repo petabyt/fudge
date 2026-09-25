@@ -415,6 +415,8 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
                                 Text(stringResource(R.string.fantasyfudge_debug))
                             } else if (BuildInfo.isNightly) {
                                 Text(stringResource(R.string.fantasyfudge_nightly))
+                            } else {
+                                Text(stringResource(R.string.app_name))
                             }
                         },
                         navigationIcon = {
