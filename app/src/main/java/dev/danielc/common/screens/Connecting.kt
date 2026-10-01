@@ -216,12 +216,12 @@ fun ConnectingScreen(back: () -> Unit = {}, model: ConnectingScreenModel = Conne
                                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                                     if (state.transport == ModuleManifest.Transport.LOCAL_NETWORK_UDP) {
                                         Text(
-                                            "Looking for a ${state.target.company} ${state.target.deviceId.getReadableName()}...",
+                                            "Looking for a ${state.target.company} ${stringResource(state.target.deviceId.getReadableName())}...",
                                             textAlign = TextAlign.Center
                                         )
                                     } else {
                                         Text(
-                                            "Connecting to a ${state.target.company} ${state.target.deviceId.getReadableName()}...",
+                                            "Connecting to a ${state.target.company} ${stringResource(state.target.deviceId.getReadableName())}...",
                                             textAlign = TextAlign.Center
                                         )
                                     }

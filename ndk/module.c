@@ -476,7 +476,7 @@ JNIEXPORT jstring JNICALL
 Java_dev_danielc_fudge_NativeModule_getVerboseLog(JNIEnv *env, jobject thiz) {
 	struct TempStruct info;
 	struct PakModule *mod = get_mod(env, thiz, &info);
-	jstring str = (*env)->NewString(env, (const jchar *)mod->rt->log_buf, 0);
+	jstring str = (*env)->NewStringUTF(env, mod->rt->log_buf);
 	release_mod(env, &info);
 	return str;
 }

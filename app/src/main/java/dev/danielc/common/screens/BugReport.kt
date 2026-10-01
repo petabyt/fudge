@@ -39,8 +39,7 @@ data class BugReport(
     val app: String = BuildInfo.packageName,
     val os: String = BuildInfo.osVersion,
     val description: String = "",
-    val verboseLog: String = "",
-    val infoLog: String = "",
+    val getVerboseLog: (() -> String) = {""},
     val moduleInstanceInfo: String = "",
 )
 
@@ -56,8 +55,7 @@ private fun submitReport(report: BugReport): Http.Response {
         put("app", report.app)
         put("os", report.os)
         put("version", report.version)
-        put("log", report.verboseLog.ifEmpty { "none" })
-        put("infoLog", report.infoLog.ifEmpty { "none" })
+        put("log", report.getVerboseLog().ifEmpty { "none" })
         put("description", report.description)
         put("moduleInstanceInfo", report.moduleInstanceInfo)
     }

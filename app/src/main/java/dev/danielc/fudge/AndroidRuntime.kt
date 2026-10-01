@@ -9,6 +9,7 @@ import android.graphics.Matrix
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
+import android.view.WindowManager
 import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -23,7 +24,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.max
-import kotlin.math.min
 
 object AndroidRuntime {
     val TAG = "AndroidRuntime"
@@ -67,6 +67,10 @@ object AndroidRuntime {
 
     fun stringHelper(@StringRes id: Int): String {
         return Pak.getActivity().getString(id)
+    }
+
+    fun keepScreenOn(on: Boolean) {
+        Pak.getActivity().window.setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON, if (on) WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON else 0)
     }
 
     @JvmStatic

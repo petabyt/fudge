@@ -132,7 +132,7 @@ fun AboutScreen(navController: NavHostController = rememberNavController()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize()) {
                     Text("Connect to cameras, earbuds, and more", style = MaterialTheme.typography.titleMedium)
                     Row(Modifier.padding(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(painterResource(R.drawable.baseline_photo_camera_24), contentDescription = null, modifier = Modifier.size(70.dp))
+                        Icon(painterResource(R.drawable.outline_photo_camera_24), contentDescription = null, modifier = Modifier.size(70.dp))
                         Icon(painterResource(R.drawable.outline_earbuds_2_24), contentDescription = null, modifier = Modifier.size(70.dp))
                         Icon(painterResource(R.drawable.outline_devices_other_24), contentDescription = null, modifier = Modifier.size(70.dp))
                     }

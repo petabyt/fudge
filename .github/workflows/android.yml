@@ -29,6 +29,7 @@ jobs:
       run: |
         cd modules/libfuji && git pull origin master --recurse-submodules
     - name: Build and sign with Gradle
+      timeout-minutes: 15
       env:
         KEYSTORE_FILE: release-key.jks
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}

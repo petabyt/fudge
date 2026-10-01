@@ -46,12 +46,37 @@ int pak_rt_set_tick_interval(struct PakModule *mod, unsigned int us) {
 	return 0;
 }
 
+static void append_to_verbose_log(struct PakModule *mod, const char *buffer, unsigned int size) {
+	struct RuntimePriv *priv = mod->rt;
+	if (size + priv->log_pos + 1 > priv->log_len) {
+		priv->log_buf = realloc(priv->log_buf, size + priv->log_pos + 1);
+		if (priv->log_buf == NULL) abort();
+	}
+	strcpy(priv->log_buf + priv->log_pos, buffer);
+	priv->log_pos += size;
+}
+
+void pak_verbose_log(struct PakModule *mod, const char *fmt, ...) {
+	char buffer[4096] = {0};
+	va_list args;
+	va_start(args, fmt);
+	int len = vsnprintf(buffer, sizeof(buffer), fmt, args);
+	va_end(args);
+	append_to_verbose_log(mod, buffer, len);
+	append_to_verbose_log(mod, "\n", 1);
+#ifndef NDEBUG
+	__android_log_write(ANDROID_LOG_DEBUG, "pak_verbose_log", buffer);
+#endif
+}
+
 void pak_debug_log(struct PakModule *mod, const char *fmt, ...) {
 	char buffer[4096] = {0};
 	va_list args;
 	va_start(args, fmt);
 	int len = vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
+	append_to_verbose_log(mod, buffer, len);
+	append_to_verbose_log(mod, "\n", 1);
 
 	if (buffer[len - 1] == '\n') buffer[len - 1] = '\0';
 
@@ -64,26 +89,6 @@ void pak_debug_log(struct PakModule *mod, const char *fmt, ...) {
 	(*env)->PopLocalFrame(env, NULL);
 
 	__android_log_write(ANDROID_LOG_DEBUG, "pak_debug_log", buffer);
-}
-
-void pak_verbose_log(struct PakModule *mod, const char *fmt, ...) {
-	char buffer[4096] = {0};
-	va_list args;
-	va_start(args, fmt);
-	int len = vsnprintf(buffer, sizeof(buffer), fmt, args);
-	va_end(args);
-
-	struct RuntimePriv *priv = mod->rt;
-	if (len + priv->log_pos + 1 > priv->log_len) {
-		priv->log_buf = realloc(priv->log_buf, len + priv->log_pos + 1);
-		if (priv->log_buf == NULL) abort();
-	}
-	strcpy(priv->log_buf + priv->log_pos, buffer);
-	priv->log_pos += len;
-
-#ifndef NDEBUG
-	__android_log_write(ANDROID_LOG_DEBUG, "pak_verbose_log", buffer);
-#endif
 }
 
 void pak_rt_fatal_error(struct PakModule *mod, const char *fmt, ...) {

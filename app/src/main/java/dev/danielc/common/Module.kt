@@ -458,6 +458,8 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
                 homeModelView.initializationError.value = true
             }
         }
+        // Keeping the screen on is desirable for downloader and liveview, which is most module functionality
+        AndroidRuntime.keepScreenOn(true)
     }
 
     fun dumpStatus(): String {
@@ -521,6 +523,7 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
         mainLoopJob?.cancelAndJoin()
     }
     suspend fun deregister() {
+        AndroidRuntime.keepScreenOn(false)
         stopAllThreads()
         println("Deregistering module")
         Runtime.removeModuleInstance(this)

@@ -3,8 +3,11 @@ package dev.danielc.common.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -167,15 +170,6 @@ fun ModuleHomeScreen(module: ModuleInstance, hostNavController: NavController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val haptic = LocalHapticFeedback.current
 
-    // Progress bar for navbar
-    // screenSwitchProgress?.let {
-    //     LinearProgressIndicator(
-    //         modifier = Modifier.fillMaxWidth(),
-    //         color = MaterialTheme.colorScheme.primary,
-    //         progress = { it.toFloat() / 100 }
-    //     )
-    // }
-
     FudgeTheme {
         DynamicScaffold(
             topBar = {},
@@ -203,6 +197,15 @@ fun ModuleHomeScreen(module: ModuleInstance, hostNavController: NavController) {
                     }
                 )
             },
+            overlay = {
+                screenSwitchProgress?.let {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        progress = { it.toFloat() / 100 }
+                    )
+                }
+            }
         ) { innerPadding ->
             fun goBack() {
                 val previousRoute = navController.previousBackStackEntry?.destination?.route
@@ -227,13 +230,10 @@ fun ModuleHomeScreen(module: ModuleInstance, hostNavController: NavController) {
                     Dashboard(Modifier.padding(innerPadding), module.dashboardModel)
                 }
                 composable(Screen.FILE_GALLERY.strId) {
-                    val galleryState by module.galleryViewModel.uiState.collectAsStateWithLifecycle()
                     BackHandler { goBack() }
-                    Gallery(Modifier.padding(innerPadding), galleryState, requestLoad = { items ->
-                        module.galleryViewModel.enqueueObjects(items)
-                    }, onItemClick = { i ->
+                    Gallery(Modifier.padding(innerPadding), module.galleryViewModel, onItemClick = { i ->
                         module.galleryViewModel.goToViewer(FileHandle(i, storageName = module.galleryViewModel.uiState.value.storageName))
-                    }, setSortBy = { sort -> module.galleryViewModel.setSortBy(sort) })
+                    })
                 }
                 composable(Screen.LIVEVIEW.strId) {
                     BackHandler { goBack() }
@@ -325,10 +325,9 @@ fun ModuleInstanceNav(module: ModuleInstance, backToMainScreen: () -> Unit = {})
         }
         composable("disconnected") {
             val debugLogState by module.debugLogModel.uiState.collectAsStateWithLifecycle()
-            val reason = "${module.disconnectReason ?: "(no reason)"} - (${Runtime.errorCodeToString(module.disconnectedErrorCode ?: 0)})"
-            DisconnectedScreen(reason, backToMainScreen = backToMainScreen, consoleState = debugLogState, report = BugReport(
+            DisconnectedScreen(backToMainScreen = backToMainScreen, consoleState = debugLogState, report = BugReport(
                 moduleInstanceInfo = module.dumpStatus(),
-                verboseLog = module.getVerboseLog(),
+                getVerboseLog = { module.getVerboseLog() },
             ))
         }
         composable(Screen.FILE_VIEWER.strId) {

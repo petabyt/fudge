@@ -331,7 +331,8 @@ fun DynamicScaffold(
     onBackPressed: (() -> Unit)? = null,
     bottomBar: @Composable (() -> Unit)? = null,
     navBarItems: List<DynamicScaffoldNavBarItem> = emptyList(),
-    content: @Composable ((PaddingValues) -> Unit)
+    overlay: @Composable (BoxScope.() -> Unit) = {},
+    content: @Composable ((PaddingValues) -> Unit),
 ) {
     BoxWithConstraints {
         val isLandscape = maxWidth > maxHeight
@@ -360,16 +361,19 @@ fun DynamicScaffold(
                     bottomBar()
                 } else {
                     if (!isLandscape) {
-                        NavigationBar {
-                            for (e in navBarItems) {
-                                NavigationBarItem(
-                                    icon = e.icon,
-                                    label = e.label,
-                                    selected = e.selected,
-                                    onClick = e.onClick,
-                                    enabled = e.enabled,
-                                )
+                        Box {
+                            NavigationBar {
+                                for (e in navBarItems) {
+                                    NavigationBarItem(
+                                        icon = e.icon,
+                                        label = e.label,
+                                        selected = e.selected,
+                                        onClick = e.onClick,
+                                        enabled = e.enabled,
+                                    )
+                                }
                             }
+                            overlay()
                         }
                     }
                 }

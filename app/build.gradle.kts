@@ -165,6 +165,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.room.runtime)
+    implementation(libs.kotlin.reflect)
     ksp(libs.androidx.room.compiler)
 
     // Test stuff

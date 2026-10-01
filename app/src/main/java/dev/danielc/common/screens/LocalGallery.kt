@@ -2,9 +2,7 @@ package dev.danielc.common.screens
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.danielc.common.FileHandle
 import dev.danielc.common.SortBy
 import dev.danielc.common.StorageInfo
@@ -13,18 +11,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class LocalGalleryViewModel: GalleryViewModel(checkFileSaved = false) {
+class LocalGalleryViewModel: GalleryViewModel(isRemoteFilesystem = false) {
     val viewer = ViewerModel(showSaveButton = false, showLoadDialog = false)
     var files = emptyList<FileLayer.MediaStoreFile>()
 
     init {
         CoroutineScope(Dispatchers.IO).launch {
-            refresh()
+            onRefresh()
             start()
         }
     }
 
-    fun refresh() {
+    override fun onRefresh() {
         try {
             files = FileLayer.getDownloadedMediaFiles()
             reset()
@@ -77,13 +75,8 @@ class LocalGalleryViewModel: GalleryViewModel(checkFileSaved = false) {
 @Composable
 fun LocalGallery(onItemClick: (Int) -> Unit, modifier: Modifier, model: LocalGalleryViewModel?) {
     if (model != null) {
-        val state by model.uiState.collectAsStateWithLifecycle()
-        Gallery(modifier, state, requestLoad = { items ->
-            model.enqueueObjects(items)
-        }, onItemClick = { i ->
+        Gallery(modifier, model, onItemClick = { i ->
             onItemClick(i)
-        }, onRefresh = {
-            model.refresh()
         })
     }
 }

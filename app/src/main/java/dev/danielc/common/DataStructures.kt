@@ -64,10 +64,9 @@ enum class Device(val id: String) {
 
     fun getIcon(): Int {
         return when (this) {
-            PROFESSIONAL_CAMERA -> R.drawable.baseline_photo_camera_24
+            PROFESSIONAL_CAMERA, GENERIC_CAMERA -> R.drawable.outline_photo_camera_24
             ACTION_CAMERA -> R.drawable.outline_videocam_24
             DASHCAM -> R.drawable.outline_camera_video_24
-            GENERIC_CAMERA -> R.drawable.baseline_photo_camera_24
             WIFI_SD_CARD -> R.drawable.outline_sd_card_24
             DOORBELL -> R.drawable.outline_general_device_24
             GENERIC_HOME_DEVICE -> R.drawable.outline_general_device_24

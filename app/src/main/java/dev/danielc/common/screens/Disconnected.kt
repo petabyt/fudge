@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,7 +34,7 @@ import dev.danielc.common.ui.theme.FudgeTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, device = "id:pixel_7", uiMode = 32)
 @Composable
-fun DisconnectedScreen(reason: String = "Reason: Failed to connect - (Disconnected)", backToMainScreen: () -> Unit = {}, consoleState: ConsoleState = ConsoleState(), report: BugReport = BugReport()) {
+fun DisconnectedScreen(backToMainScreen: () -> Unit = {}, consoleState: ConsoleState = ConsoleState(), report: BugReport = BugReport()) {
     var showBugDialog by remember { mutableStateOf(false) }
 
     FudgeTheme {
