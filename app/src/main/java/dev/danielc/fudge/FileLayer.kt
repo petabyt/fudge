@@ -60,52 +60,52 @@ object FileLayer {
         shareFile(file.contentUri)
     }
 
-    fun openImageInDefaultApp(filename: String) {
-        shareFile("file://${filename}".toUri())
-    }
+//    fun openImageInDefaultApp(filename: String) {
+//        shareFile("file://${filename}".toUri())
+//    }
 
-    fun filesFromDirectory(path: String): List<String> {
-        val dir = File(path)
-        val files = dir.listFiles() ?: throw Exception("Error listing files in directory")
-        val list = mutableListOf<String>()
-        for (e in files) list.add(e.path)
-        return list
-    }
+//    fun filesFromDirectory(path: String): List<String> {
+//        val dir = File(path)
+//        val files = dir.listFiles() ?: throw Exception("Error listing files in directory")
+//        val list = mutableListOf<String>()
+//        for (e in files) list.add(e.path)
+//        return list
+//    }
+//
+//    fun getDownloadDirectory(): String {
+//        val mainStorage = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).path
+//        val fujifilm = mainStorage + File.separator + "fudge"
+//        val directory = File(fujifilm)
+//        if (!directory.exists()) {
+//            directory.mkdirs()
+//        }
+//        return fujifilm
+//    }
+//
+//    fun scanImage(path: String) {
+//        MediaScannerConnection.scanFile(Pak.getActivity(), arrayOf(path), null, null)
+//    }
 
-    fun getDownloadDirectory(): String {
-        val mainStorage = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).path
-        val fujifilm = mainStorage + File.separator + "fudge"
-        val directory = File(fujifilm)
-        if (!directory.exists()) {
-            directory.mkdirs()
-        }
-        return fujifilm
-    }
-
-    fun scanImage(path: String) {
-        MediaScannerConnection.scanFile(Pak.getActivity(), arrayOf(path), null, null)
-    }
-
-    fun writeFile(data: ByteArray, filename: String) {
-        val path = getDownloadDirectory() + File.separator + filename
-        val file = File(path)
-        var fos: FileOutputStream? = null
-        try {
-            fos = FileOutputStream(file)
-            fos.write(data)
-        } catch (e: IOException) {
-            e.printStackTrace()
-        } finally {
-            if (fos != null) {
-                try {
-                    fos.close()
-                    this.scanImage(path)
-                } catch (e: IOException) {
-                    e.printStackTrace()
-                }
-            }
-        }
-    }
+//    fun writeFile(data: ByteArray, filename: String) {
+//        val path = getDownloadDirectory() + File.separator + filename
+//        val file = File(path)
+//        var fos: FileOutputStream? = null
+//        try {
+//            fos = FileOutputStream(file)
+//            fos.write(data)
+//        } catch (e: IOException) {
+//            e.printStackTrace()
+//        } finally {
+//            if (fos != null) {
+//                try {
+//                    fos.close()
+//                    this.scanImage(path)
+//                } catch (e: IOException) {
+//                    e.printStackTrace()
+//                }
+//            }
+//        }
+//    }
 
     data class MediaStoreFile(
         val contentUri: Uri,

@@ -2,7 +2,9 @@
     <string name="app_name">Fudge</string>
     <string name="connect_again">Connect again:</string>
     <string name="bonded_devices">Bonded devices:</string>
-    <string name="fantasyfudge_pre_release">FantasyFudge pre-release</string>
+    <string name="debug_tag">(Debug)</string>
+    <string name="nightly_tag">(Nightly)</string>
+    <string name="alpha_tag">(Alpha)</string>
     <string name="introduction_and_what_this_app_does">Introduction and what this app does</string>
     <string name="last_connected_hours_ago">Last connected %1$d hours ago</string>
     <string name="nearby">Nearby</string>
@@ -12,8 +14,6 @@
     <string name="modules">Modules</string>
     <string name="select_a_type_of_device_to_connect_to">Select a type of device to connect to:</string>
     <string name="debug_console">Debug Console</string>
-    <string name="fantasyfudge_debug">FantasyFudge (Debug)</string>
-    <string name="fantasyfudge_nightly">FantasyFudge (Nightly)</string>
     <string name="report_a_bug_to_daniel">Report a bug to Daniel</string>
     <string name="reporting_a_bug_sends_a_verbose">Reporting a bug sends a verbose log, OS version and runtime info to Daniel. Reports are anonymous.</string>
     <string name="report_feedback_to_daniel">Report feedback to Daniel</string>

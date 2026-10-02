@@ -25,8 +25,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -50,7 +48,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -76,7 +73,6 @@ import dev.danielc.common.ui.DynamicScaffold
 import dev.danielc.common.ui.DynamicScaffoldNavBarItem
 import dev.danielc.common.ui.ManifestList
 import dev.danielc.common.ui.PreviewPixel9ProDark
-import dev.danielc.common.ui.PreviewTabletDark
 import dev.danielc.common.ui.TargetCard
 import dev.danielc.common.ui.dummyManifestList
 import dev.danielc.common.ui.theme.FudgeTheme
@@ -90,10 +86,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.DurationUnit
-
-private val dummyConnectableDeviceList: List<ConnectableDevice> = listOf(
-    ConnectableDevice("CMF Buds Pro 2", manifest = dummyManifestList[0], target = dummyManifestList[0].targets[0]),
-)
 
 private val dummyOptions = listOf(
     ModuleManifest.SetupOption("wifi", "WiFi"),
@@ -296,7 +288,7 @@ fun MainConnectScreen(navController: NavController, modifier: Modifier = Modifie
                         }) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
-                                    Text(stringResource(R.string.fantasyfudge_pre_release), style = MaterialTheme.typography.titleMedium)
+                                    Text("${stringResource(R.string.app_name)} ${stringResource(R.string.alpha_tag)}", style = MaterialTheme.typography.titleMedium)
                                     Text(stringResource(R.string.introduction_and_what_this_app_does))
                                 }
                                 IconButton(onClick = {
@@ -412,9 +404,9 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
                         colors = TopAppBarDefaults.topAppBarColors(),
                         title = {
                             if (BuildInfo.isDebug) {
-                                Text(stringResource(R.string.fantasyfudge_debug))
+                                Text("${stringResource(R.string.app_name)} ${stringResource(R.string.debug_tag)}")
                             } else if (BuildInfo.isNightly) {
-                                Text(stringResource(R.string.fantasyfudge_nightly))
+                                Text("${stringResource(R.string.app_name)} ${stringResource(R.string.nightly_tag)}")
                             } else {
                                 Text(stringResource(R.string.app_name))
                             }
@@ -471,31 +463,6 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
                     }
                 )
             },
-//            bottomBar = {
-//                NavigationBar {
-//                    items.forEach { item ->
-//                        NavigationBarItem(
-//                            icon = {
-//                                Icon(
-//                                    painter = painterResource(item.icon),
-//                                    contentDescription = null
-//                                )
-//                            },
-//                            label = {
-//                                Text(item.text)
-//                            },
-//                            selected = navBackStackEntry?.destination?.hierarchy?.any { it.route == item.route } == true,
-//                            onClick = {
-//                                subNavController.navigate(item.route) {
-//                                    launchSingleTop = true
-//                                    restoreState = false
-//                                }
-//                                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-//                            }
-//                        )
-//                    }
-//                }
-//            }
         ) { innerPadding ->
             NavHost(
                 enterTransition = { EnterTransition.None },

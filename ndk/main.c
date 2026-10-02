@@ -8,6 +8,7 @@
 #include <dlfcn.h>
 #include <stdint.h>
 #include <android/log.h>
+#include <time.h>
 #include "thread.h"
 #include "main.h"
 
@@ -22,10 +23,7 @@ void pak_global_log(const char *fmt, ...) {
 	va_start(args, fmt);
 	int b = vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
-
-	if (buffer[b - 1] == '\n') {
-		buffer[b - 1] = '\0';
-	}
+	if (buffer[b - 1] == '\n') buffer[b - 1] = '\0';
 
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
@@ -56,14 +54,25 @@ static void append_to_verbose_log(struct PakModule *mod, const char *buffer, uns
 	priv->log_pos += size;
 }
 
+void append_timestamp_to_verbose_log(struct PakModule *mod) {
+	struct timespec now;
+    clock_gettime(CLOCK_REALTIME, &now);
+    unsigned int ms = ((int64_t)now.tv_sec) * 1000 + ((int64_t)now.tv_nsec) / 1000000;
+	char time_buf[64] = {0};
+	sprintf(time_buf, "[%05u] ", ms % 99999);
+	append_to_verbose_log(mod, time_buf, strlen(time_buf));
+}
+
 void pak_verbose_log(struct PakModule *mod, const char *fmt, ...) {
 	char buffer[4096] = {0};
 	va_list args;
 	va_start(args, fmt);
 	int len = vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
+
+	append_timestamp_to_verbose_log(mod);
 	append_to_verbose_log(mod, buffer, len);
-	append_to_verbose_log(mod, "\n", 1);
+	if (buffer[len - 1] != '\n') append_to_verbose_log(mod, "\n", 1);
 #ifndef NDEBUG
 	__android_log_write(ANDROID_LOG_DEBUG, "pak_verbose_log", buffer);
 #endif
@@ -75,10 +84,11 @@ void pak_debug_log(struct PakModule *mod, const char *fmt, ...) {
 	va_start(args, fmt);
 	int len = vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
+	if (buffer[len - 1] == '\n') buffer[--len] = '\0';
+
+	append_timestamp_to_verbose_log(mod);
 	append_to_verbose_log(mod, buffer, len);
 	append_to_verbose_log(mod, "\n", 1);
-
-	if (buffer[len - 1] == '\n') buffer[len - 1] = '\0';
 
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
@@ -426,9 +436,9 @@ int pak_rt_add_wifi_connection(struct PakModule *mod, struct PakWiFiApFilter *fi
 	jobject filter_o = pak_wifi_ap_filter_to_jobject(env, filter);
 
 	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
-	jmethodID method = (*env)->GetMethodID(env, module_c, "addWiFiConnection", "(Ldev/danielc/libpak/WiFi$ApFilter;Ljava/lang/String;)V");
+	jmethodID method = (*env)->GetMethodID(env, module_c, "addWiFiConnection", "(Ldev/danielc/libpak/WiFi$ApFilter;Ljava/lang/String;Z)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, method, filter_o,
-		(*env)->NewStringUTF(env, setup_option)
+		(*env)->NewStringUTF(env, setup_option), true
 	);
 
 	(*env)->PopLocalFrame(env, NULL);

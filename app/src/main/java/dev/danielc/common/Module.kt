@@ -242,7 +242,7 @@ class ModuleConnectingScreenModel(val module: ModuleInstance) : ConnectingScreen
     override fun onTryAgain() {
         if (isSecondaryConnection) {
             if (secondaryConnectionJob?.isCompleted ?: true) {
-                module.addWiFiConnection(lastWiFiApFilter ?: return, lastWiFiSetupOption ?: return)
+                module.addWiFiConnection(lastWiFiApFilter ?: return, lastWiFiSetupOption ?: return, gotoScreen = false)
             }
         } else {
             if (module.initJob?.isCompleted ?: true) {
@@ -622,12 +622,12 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
         }
     }
     @CalledFromNative
-    fun addWiFiConnection(filter: WiFi.ApFilter, setupOption: String) {
-        connectingModel.isSecondaryConnection = true
+    fun addWiFiConnection(filter: WiFi.ApFilter, setupOption: String, gotoScreen: Boolean = true) {
         connectingModel.lastWiFiApFilter = filter
         connectingModel.lastWiFiSetupOption = setupOption
         connectingModel.secondaryConnectionJob = CoroutineScope(Dispatchers.IO).launch {
-            if (currentScreen != Screen.CONNECT_SECONDARY) homeModelView.goToScreen(Screen.CONNECT_SECONDARY, false)
+            if (gotoScreen) homeModelView.goToScreen(Screen.CONNECT_SECONDARY, false)
+            connectingModel.isSecondaryConnection = true
             setSetupOptionName(setupOption)
             val callback = object : WiFi.WiFiDiscoveryCallback() {
                 override fun failed(reason: String, code: Int) {

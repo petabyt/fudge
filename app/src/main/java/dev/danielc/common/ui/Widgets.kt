@@ -326,7 +326,6 @@ data class DynamicScaffoldNavBarItem(
 fun DynamicScaffold(
     modifier: Modifier = Modifier,
     topBar: @Composable (() -> Unit)? = null,
-    noTopBar: Boolean = false,
     topTitle: String? = null,
     onBackPressed: (() -> Unit)? = null,
     bottomBar: @Composable (() -> Unit)? = null,
@@ -380,7 +379,7 @@ fun DynamicScaffold(
             },
             content = { padding ->
                 if (isLandscape && bottomBar == null) {
-                    NavigationRail() {
+                    NavigationRail {
                         Spacer(Modifier.weight(1f))
                         for (e in navBarItems) {
                             NavigationRailItem(
