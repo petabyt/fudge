@@ -89,7 +89,8 @@ class ModuleLiveFeedModel(val module: ModuleInstance): LiveFeedModel() {
             downloader = object : FileDownloader(
                 file,
                 item?.metadata?.filename ?: "unknown${file.index}.jpg",
-                item?.metadata?.mimeType ?: MimeType.JPEG.mediaTypeString
+                item?.metadata?.mimeType ?: MimeType.JPEG.mediaTypeString,
+                module.viewerViewModel.dir
             ) {
                 override fun onFinished(file: FileLayer.Handle) {
                     module.updateStorageDeviceStatus(this.file.storageName, "Finished downloading")
@@ -127,7 +128,7 @@ class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: Vi
 
     private fun updateDownloader(file: FileHandle) {
         val md = module.galleryViewModel.getMetadata(file)
-        downloader = object : FileDownloader(file, md?.filename ?: "unknown${file.index}.jpg", MimeType.JPEG.mediaTypeString) {
+        downloader = object : FileDownloader(file, md?.filename ?: "unknown${file.index}.jpg", MimeType.JPEG.mediaTypeString, module.viewerViewModel.dir) {
             private var isNotUpdatingDownloadSpeed: Boolean = false
             override fun onFinished(buffer: ByteArray) {
                 module.viewerViewModel.loadImage(buffer)
@@ -542,6 +543,11 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
     }
     @CalledFromNative
     fun setProperty(type: String, value: String) {
+        if (ModuleProperty.fromId(type) == ModuleProperty.NAME_OF_DEVICE) {
+            val dir = FileLayer.Directory(subfolder = if (Runtime.appSettings.value.perDeviceSubFolder) value else null)
+            viewerViewModel.dir = dir
+            galleryViewModel.dir = dir
+        }
         dashboardModel.setProperty(ModuleProperty.fromId(type) ?: return, value)
     }
     @CalledFromNative

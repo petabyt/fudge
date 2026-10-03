@@ -397,7 +397,6 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
             FeedbackDialog({ showFeedbackDialog = false })
         }
         DynamicScaffold(
-            noTopBar = navBackStackEntry?.destination?.route == "local-gallery",
             topBar = {
                 if (navBackStackEntry?.destination?.route != "local-gallery") {
                     TopAppBar(

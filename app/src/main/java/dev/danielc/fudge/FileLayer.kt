@@ -6,7 +6,6 @@ import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -17,7 +16,6 @@ import android.util.Log
 import android.util.Size
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.core.net.toUri
 import dev.danielc.common.FileMetadata
 import dev.danielc.common.MimeType
 import dev.danielc.fudge.AndroidRuntime.decodeImageContents
@@ -26,87 +24,10 @@ import dev.danielc.libpak.Pak
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 
 object FileLayer {
-    fun readFile(path: String): ByteArray? {
-        try {
-            if (path.startsWith("file:///android_asset/")) {
-                val assman = Pak.getActivity().assets
-                val f = assman.open(path.substringAfter("file:///android_asset/"))
-                return f.readBytes()
-            } else {
-                val f = File(path)
-                if (!f.exists()) return null
-                return f.readBytes()
-            }
-        } catch (ignored: Exception) { return null }
-    }
-
-    private fun shareFile(uri: Uri) {
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "image/jpeg"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            clipData = ClipData.newUri(Pak.getActivity().contentResolver, "Shared Image", uri)
-        }
-        val chooserIntent = Intent.createChooser(intent, "Share")
-        Pak.getActivity().startActivity(chooserIntent)
-    }
-
-    fun openImageInDefaultApp(file: MediaStoreFile) {
-        shareFile(file.contentUri)
-    }
-
-//    fun openImageInDefaultApp(filename: String) {
-//        shareFile("file://${filename}".toUri())
-//    }
-
-//    fun filesFromDirectory(path: String): List<String> {
-//        val dir = File(path)
-//        val files = dir.listFiles() ?: throw Exception("Error listing files in directory")
-//        val list = mutableListOf<String>()
-//        for (e in files) list.add(e.path)
-//        return list
-//    }
-//
-//    fun getDownloadDirectory(): String {
-//        val mainStorage = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).path
-//        val fujifilm = mainStorage + File.separator + "fudge"
-//        val directory = File(fujifilm)
-//        if (!directory.exists()) {
-//            directory.mkdirs()
-//        }
-//        return fujifilm
-//    }
-//
-//    fun scanImage(path: String) {
-//        MediaScannerConnection.scanFile(Pak.getActivity(), arrayOf(path), null, null)
-//    }
-
-//    fun writeFile(data: ByteArray, filename: String) {
-//        val path = getDownloadDirectory() + File.separator + filename
-//        val file = File(path)
-//        var fos: FileOutputStream? = null
-//        try {
-//            fos = FileOutputStream(file)
-//            fos.write(data)
-//        } catch (e: IOException) {
-//            e.printStackTrace()
-//        } finally {
-//            if (fos != null) {
-//                try {
-//                    fos.close()
-//                    this.scanImage(path)
-//                } catch (e: IOException) {
-//                    e.printStackTrace()
-//                }
-//            }
-//        }
-//    }
-
     data class MediaStoreFile(
         val contentUri: Uri,
         val path: String,
@@ -133,6 +54,45 @@ object FileLayer {
         }
     }
 
+    data class Directory(
+        val folder: String = "fudge",
+        val subfolder: String? = null,
+        val customFullPath: String? = null,
+    ) {
+        fun getPath(): String {
+            return folder + if (subfolder == null) "" else "/${subfolder}"
+        }
+    }
+
+    fun readFile(path: String): ByteArray? {
+        try {
+            if (path.startsWith("file:///android_asset/")) {
+                val assman = Pak.getActivity().assets
+                val f = assman.open(path.substringAfter("file:///android_asset/"))
+                return f.readBytes()
+            } else {
+                val f = File(path)
+                if (!f.exists()) return null
+                return f.readBytes()
+            }
+        } catch (_: Exception) { return null }
+    }
+
+    private fun shareFile(uri: Uri) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "image/jpeg"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            clipData = ClipData.newUri(Pak.getActivity().contentResolver, "Shared Image", uri)
+        }
+        val chooserIntent = Intent.createChooser(intent, "Share")
+        Pak.getActivity().startActivity(chooserIntent)
+    }
+
+    fun openImageInDefaultApp(file: MediaStoreFile) {
+        shareFile(file.contentUri)
+    }
+
     fun deleteFile(file: Handle) {
         Log.d("files", "Deleting ${file.uri}")
         val resolver = Pak.getActivity().contentResolver
@@ -146,7 +106,7 @@ object FileLayer {
         } catch (ignored: Exception) { return null }
     }
 
-    fun doesFileExist(filename: String, subfolder: String = "fudge"): Boolean {
+    fun doesFileExist(filename: String, dir: Directory = Directory()): Boolean {
         // querying doesn't work for files the app doesn't have access to
 
         val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND " +
@@ -160,16 +120,16 @@ object FileLayer {
             arrayOf(MediaStore.MediaColumns._ID),
             selection,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                arrayOf(filename, "%${Environment.DIRECTORY_DOWNLOADS}/${subfolder}/%")
+                arrayOf(filename, "%${Environment.DIRECTORY_DOWNLOADS}/${dir.getPath()}/%")
             else
-                arrayOf(filename, "%/${Environment.DIRECTORY_PICTURES}/${subfolder}/%", "%/${Environment.DIRECTORY_MOVIES}/${subfolder}/%"),
+                arrayOf(filename, "%/${Environment.DIRECTORY_PICTURES}/${dir.getPath()}/%", "%/${Environment.DIRECTORY_MOVIES}/${dir.getPath()}/%"),
             null
         ).use { cursor ->
             return cursor != null && cursor.count > 0
         }
     }
 
-    fun openFileForWriting(filename: String, mimeType: String?, subdirectory: String = "fudge", mode: String = "w"): Handle? {
+    fun openFileForWriting(filename: String, mimeType: String?, dir: Directory = Directory(), mode: String = "w"): Handle? {
         val resolver = Pak.getActivity().contentResolver
 
         val pair = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -187,13 +147,13 @@ object FileLayer {
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
             put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "${directory}/${subdirectory}")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "${directory}/${dir.getPath()}")
         }
 
         try {
             val uri = resolver.insert(collection, values) ?: return null
             return Handle(resolver.openFileDescriptor(uri, mode) ?: return null, uri)
-        } catch (ignored: Exception) { return null }
+        } catch (_: Exception) { return null }
     }
 
     fun getMediaThumbnail(file: MediaStoreFile): ImageBitmap? {

@@ -119,7 +119,7 @@ data class ViewerState(
     val hasSaved: Boolean = false,
 )
 
-open class FileDownloader(val file: FileHandle, val filename: String, val mimeType: String? = null) {
+open class FileDownloader(val file: FileHandle, val filename: String, val mimeType: String? = null, val dir: FileLayer.Directory = FileLayer.Directory()) {
     private var temporaryBuffer: ByteArray? = null
     private var fileHandle: FileLayer.Handle? = null
     private var fileTotalSize: Long? = null
@@ -143,7 +143,7 @@ open class FileDownloader(val file: FileHandle, val filename: String, val mimeTy
 
     fun save(): FileLayer.Handle? {
         temporaryBuffer?.let {
-            val fd = FileLayer.openFileForWriting(filename, mimeType)
+            val fd = FileLayer.openFileForWriting(filename, mimeType, dir)
             if (fd == null) {
                 println("TODO: Failed to open file")
                 return null
@@ -200,7 +200,7 @@ open class FileDownloader(val file: FileHandle, val filename: String, val mimeTy
 
         // Automatically route to file if too large
         if (temporaryBufferRef.size + data.size > MAX_BUFFER_SIZE || totalSize > MAX_BUFFER_SIZE && fileHandle == null) {
-            fileHandle = FileLayer.openFileForWriting(filename, mimeType)
+            fileHandle = FileLayer.openFileForWriting(filename, mimeType, dir)
             if (fileHandle == null) {
                 println("Rejecting transfers")
                 rejectTransfers = true
@@ -229,7 +229,7 @@ open class FileDownloader(val file: FileHandle, val filename: String, val mimeTy
     }
 }
 
-class ViewerModel(val showSaveButton: Boolean = true, val showLoadDialog: Boolean = true) : BackgroundViewModel() {
+class ViewerModel(val showSaveButton: Boolean = true, val showLoadDialog: Boolean = true, var dir: FileLayer.Directory = FileLayer.Directory()) : BackgroundViewModel() {
     private val _viewerState = MutableStateFlow<ViewerState?>(null)
     val viewerState = _viewerState.asStateFlow()
 
@@ -281,7 +281,7 @@ class ViewerModel(val showSaveButton: Boolean = true, val showLoadDialog: Boolea
     }
     fun updateMetadata(metadata: FileMetadata?) {
         val filename = metadata?.filename
-        val saved = if (filename != null) FileLayer.doesFileExist(filename) else false
+        val saved = if (filename != null) FileLayer.doesFileExist(filename, dir) else false
         _viewerState.update { viewerState ->
             viewerState?.copy(
                 metadata = metadata,

@@ -154,7 +154,12 @@ data class FilesystemState(
     val sortedList: List<Int> = emptyList(),
 )
 
-abstract class GalleryViewModel(val isRemoteFilesystem: Boolean = true, var isThumbnailPriority: Boolean = true, initialState: FilesystemState = FilesystemState()) : BackgroundViewModel() {
+abstract class GalleryViewModel(
+    val isRemoteFilesystem: Boolean = true,
+    var isThumbnailPriority: Boolean = true,
+    initialState: FilesystemState = FilesystemState(),
+    var dir: FileLayer.Directory = FileLayer.Directory()
+) : BackgroundViewModel() {
     private val _uiState = MutableStateFlow(initialState)
     val uiState = _uiState.asStateFlow()
     val queue: ArrayDeque<GalleryObjectReference> = ArrayDeque()
