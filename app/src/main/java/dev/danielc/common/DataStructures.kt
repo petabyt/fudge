@@ -129,8 +129,9 @@ sealed interface Widget {
         val name: String,
         val title: String,
         val group: Group = Group.DEFAULT,
+        val disabled: Boolean = false,
     ) {
-        constructor(name: String, title: String, group: Int) : this(name, title, Group.fromInt(group) ?: Group.DEFAULT)
+        constructor(name: String, title: String, group: Int, disabled: Boolean) : this(name, title, Group.fromInt(group) ?: Group.DEFAULT, disabled)
     }
     data class Button(override val args: Properties): Widget
     data class BooleanSetting(override val args: Properties, val value: Boolean): Widget
@@ -240,6 +241,7 @@ data class FileMetadata(
     val updatedDate: String? = null,
     val orientation: Int = 0,
 ) {
+    val createdTimestamp = if (createdDate == null ) null else Timestamp.fromString(createdDate)
     fun getMimeType(): MimeType {
         return MimeType.fromString(this.mimeType.orEmpty())
     }
@@ -304,14 +306,47 @@ data class StorageInfo(
     ) : this(name, nFiles, SortBy.fromId(itemsSortedBy)!!, if (sizeBytes == 0L) null else sizeBytes, if (usedBytes == 0L) null else usedBytes, isLiveFeedMedium)
 }
 
-enum class MimeType(val mediaTypeString: String) {
+enum class MimeType(val mediaTypeString: String, val alts: Array<String>? = null) {
     FILE("application/octet-stream"),
     FOLDER("inode/directory"),
     JPEG("image/jpeg"),
     PNG("image/png"),
+    MOV("video/quicktime"),
     IMAGE("image"),
     VIDEO("video"),
-    MOV("video/quicktime");
+    RAW("image/x-dcraw", arrayOf(
+      "image/dng",
+      "image/x-adobe-dng",
+      "image/x-arri-ari",
+      "image/x-blackmagic-braw",
+      "image/x-canon-cr2",
+      "image/x-canon-cr3",
+      "image/x-canon-crw",
+      "image/x-epson-erf",
+      "image/x-fuji-raf",
+      "image/x-hasselblad-3fr",
+      "image/x-hasselblad-fff",
+      "image/x-kodak-dcr",
+      "image/x-kodak-k25",
+      "image/x-kodak-kdc",
+      "image/x-leaf-mos",
+      "image/x-leica-rwl",
+      "image/x-mamiya-mef",
+      "image/x-minolta-mrw",
+      "image/x-nikon-nef",
+      "image/x-nikon-nrw",
+      "image/x-olympus-orf",
+      "image/x-panasonic-raw",
+      "image/x-panasonic-rw2",
+      "image/x-pentax-pef",
+      "image/x-pentax-ptx",
+      "image/x-phaseone-iiq",
+      "image/x-samsung-srw",
+      "image/x-sigma-x3f",
+      "image/x-sony-arw",
+      "image/x-sony-sr2",
+      "image/x-sony-srf"
+    ));
     fun isImage(): Boolean {
         return when (this) {
             JPEG, PNG, IMAGE -> true
@@ -338,7 +373,7 @@ enum class MimeType(val mediaTypeString: String) {
             return (t ?: FILE).mediaTypeString
         }
         fun fromString(str: String?): MimeType {
-            return MimeType.entries.find { it.mediaTypeString == str } ?: FILE
+            return MimeType.entries.find { it.mediaTypeString == str || (it.alts?.contains(str) ?: false) } ?: FILE
         }
     }
 }
@@ -351,6 +386,34 @@ enum class WidgetNames(val id: String) {
     companion object {
         fun fromString(str: String?): MimeType {
             return MimeType.entries.find { it.mediaTypeString == str } ?: FILE
+        }
+    }
+}
+
+data class Timestamp (
+	val year: Int,
+	val month: Int,
+	val day: Int,
+	val hour: Int,
+	val minute: Int,
+	val second: Int,
+	val centisecond: Int,
+) {
+    companion object {
+        private val ISO_DATE_REGEX = Regex("""^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(?:\.(\d+))?$""")
+        fun fromString(input: String): Timestamp? {
+            val matchResult = ISO_DATE_REGEX.matchEntire(input) ?: return null
+            val (year, month, day, hour, minute, second, subsecond) = matchResult.destructured
+
+            return Timestamp(
+                year = year.toInt(),
+                month = month.toInt(),
+                day = day.toInt(),
+                hour = hour.toInt(),
+                minute = minute.toInt(),
+                second = second.toInt(),
+                centisecond = (if (subsecond.isEmpty()) 0 else subsecond.toInt()) * 10
+            )
         }
     }
 }

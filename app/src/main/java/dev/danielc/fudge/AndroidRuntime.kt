@@ -18,12 +18,46 @@ import dev.danielc.common.AppDatabase
 import dev.danielc.common.AppSettingEntity
 import dev.danielc.common.ModuleInstance
 import dev.danielc.common.Runtime
+import dev.danielc.common.Timestamp
 import dev.danielc.libpak.Pak
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.Calendar
+import java.util.TimeZone
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.max
+
+fun Timestamp.toEpochMillis(): Long {
+    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+        set(Calendar.YEAR, year)
+        set(Calendar.MONTH, month - 1)
+        set(Calendar.DAY_OF_MONTH, day)
+        set(Calendar.HOUR_OF_DAY, hour)
+        set(Calendar.MINUTE, minute)
+        set(Calendar.SECOND, second)
+        set(Calendar.MILLISECOND, centisecond * 100)
+    }
+    return cal.timeInMillis
+}
+
+fun Timestamp.hoursSince(other: Timestamp): Double {
+    val diffMillis = this.toEpochMillis() - other.toEpochMillis()
+    return diffMillis / (1000.0 * 60 * 60)
+}
+
+fun Timestamp.Companion.now(): Timestamp {
+    val cal = Calendar.getInstance()
+    return Timestamp(
+        year = cal.get(Calendar.YEAR),
+        month = cal.get(Calendar.MONTH) + 1,
+        day = cal.get(Calendar.DAY_OF_MONTH),
+        hour = cal.get(Calendar.HOUR_OF_DAY),
+        minute = cal.get(Calendar.MINUTE),
+        second = cal.get(Calendar.SECOND),
+        centisecond = cal.get(Calendar.MILLISECOND) / 100
+    )
+}
 
 object AndroidRuntime {
     val TAG = "AndroidRuntime"

@@ -162,7 +162,7 @@ static jobject create_filemetadata(JNIEnv *env, const struct PakFileMetadata *me
 		meta->image_width,
 		meta->image_height,
 		(jint)meta->file_size, // narrows
-		NULL,
+		(*env)->NewStringUTF(env, meta->created_date),
 		NULL,
 		meta->orientation
 	);
@@ -307,7 +307,12 @@ int pak_rt_set_widget(struct PakModule *mod, const char *name, const struct PakW
 	jclass properties_c = (*env)->FindClass(env, "dev/danielc/common/Widget$Properties");
 	jstring name_s = (*env)->NewStringUTF(env, name);
 	jstring title_s = (*env)->NewStringUTF(env, s->title);
-	jobject properties_o = (*env)->NewObject(env, properties_c, (*env)->GetMethodID(env, properties_c, "<init>", "(Ljava/lang/String;Ljava/lang/String;I)V"), name_s, title_s, (jint)s->group);
+	jobject properties_o = (*env)->NewObject(env, properties_c, (*env)->GetMethodID(env, properties_c, "<init>", "(Ljava/lang/String;Ljava/lang/String;IZ)V"),
+		name_s,
+		title_s,
+		(jint)s->group,
+		(jboolean)s->disabled
+	);
 
 	jobject pane_o = NULL;
 	if (s->type == PAK_BOOLEAN) {

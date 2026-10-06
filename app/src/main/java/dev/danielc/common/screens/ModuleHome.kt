@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -34,6 +35,7 @@ import dev.danielc.common.ModuleInstance
 import dev.danielc.common.ModuleInstanceRequest
 import dev.danielc.common.ModuleManifest
 import dev.danielc.common.Screen
+import dev.danielc.common.ui.BackupDialog
 import dev.danielc.common.ui.DefaultNavHost
 import dev.danielc.common.ui.DisconnectDialog
 import dev.danielc.common.ui.DynamicScaffold
@@ -230,8 +232,17 @@ fun ModuleHomeScreen(module: ModuleInstance, hostNavController: NavController) {
                 }
                 composable(Screen.FILE_GALLERY.strId) {
                     BackHandler { goBack() }
+                    var showBackupDialog by rememberSaveable { mutableStateOf(false) }
+                    if (showBackupDialog) {
+                        BackupDialog(model = module.backupModel, dismiss = {
+                            showBackupDialog = false
+                        })
+                    }
                     Gallery(Modifier.padding(innerPadding), module.galleryViewModel, onItemClick = { i ->
                         module.galleryViewModel.goToViewer(FileHandle(i, storageName = module.galleryViewModel.uiState.value.storageName))
+                    }, showBackupDialog = {
+                        module.backupModel.reset()
+                        showBackupDialog = true
                     })
                 }
                 composable(Screen.LIVEVIEW.strId) {

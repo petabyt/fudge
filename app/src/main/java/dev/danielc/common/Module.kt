@@ -11,6 +11,7 @@ import dev.danielc.common.screens.LiveFeedModel
 import dev.danielc.common.screens.ModuleInstanceModel
 import dev.danielc.common.screens.ModuleIntervalometerModel
 import dev.danielc.common.screens.ViewerModel
+import dev.danielc.common.ui.BackupModel
 import dev.danielc.fudge.AndroidRuntime
 import dev.danielc.fudge.FileLayer
 import dev.danielc.fudge.ModuleLiveviewModel
@@ -53,6 +54,22 @@ data class ModuleJob(
     var isCancelled: Boolean = false,
     var isFinished: Boolean = false,
 )
+
+class ModuleBackupModel(val module: ModuleInstance): BackupModel(module.galleryViewModel.uiState) {
+    override fun cancelJob(job: ModuleJob) { module.cancelJob(job) }
+    override fun fulfillFileMetadata(index: Int) { module.galleryViewModel.fulfillMetadata(GalleryObjectReference(index)) }
+    override fun downloadFile(index: Int, update: (ModuleJob) -> Unit) {
+        val handle = FileHandle(index, module.galleryViewModel.uiState.value.storageName)
+        module.galleryViewModel.updateDownloader(handle)
+        val downloader = module.galleryViewModel.downloader
+        module.getFileContents(file = handle, onUpdate = {
+            update(it)
+            if (it.isFinished && !it.isCancelled) downloader?.save()
+        })
+    }
+    override fun onStart() { module.galleryViewModel.setPaused(true) }
+    override fun onStop() { module.galleryViewModel.setPaused(false) }
+}
 
 class ModuleLiveFeedModel(val module: ModuleInstance): LiveFeedModel() {
     var downloader: FileDownloader? = null
@@ -126,7 +143,7 @@ class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: Vi
         }
     }
 
-    private fun updateDownloader(file: FileHandle) {
+    fun updateDownloader(file: FileHandle) {
         val md = module.galleryViewModel.getMetadata(file)
         downloader = object : FileDownloader(file, md?.filename ?: "unknown${file.index}.jpg", MimeType.JPEG.mediaTypeString, module.viewerViewModel.dir) {
             private var isNotUpdatingDownloadSpeed: Boolean = false
@@ -404,6 +421,7 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
     val connectingModel = ModuleConnectingScreenModel(this)
     val dashboardModel = ModuleDashboardModel(this)
     val liveviewWorker = ModuleLiveviewModel(this)
+    val backupModel = ModuleBackupModel(this)
     val target = manifest.targets[request.targetIndex]
     private val companionName = "${target.company} ${target.deviceId.getReadableName()}"
 
@@ -431,18 +449,13 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
             }
             ModuleManifest.ModuleType.QUICKJS -> {
                 val path = manifest.getModulePath()
-                if (path == null) {
-                    debugLog("<error>script path not included")
+                var fileContents = FileLayer.readFile(path)
+                if (fileContents == null) {
+                    debugLog("Failed to read ${path}")
                     -1
                 } else {
-                    var fileContents = FileLayer.readFile(path)
-                    if (fileContents == null) {
-                        debugLog("Failed to read ${path}")
-                        -1
-                    } else {
-                        fileContents += 0.toByte()
-                        AndroidRuntime.setupJavascriptModule(this, fileContents)
-                    }
+                    fileContents += 0.toByte()
+                    AndroidRuntime.setupJavascriptModule(this, fileContents)
                 }
             }
             ModuleManifest.ModuleType.WEBASSEMBLY -> {

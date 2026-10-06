@@ -1,5 +1,6 @@
 package dev.danielc.fudge
 
+import dev.danielc.common.Timestamp
 import org.junit.Test
 
 import org.junit.Assert.*
@@ -11,7 +12,7 @@ import org.junit.Assert.*
  */
 class UnitTest {
     @Test
-    fun addition_isCorrect() {
-        assertEquals(4, 2 + 2)
+    fun main() {
+        Timestamp.fromString("")
     }
 }

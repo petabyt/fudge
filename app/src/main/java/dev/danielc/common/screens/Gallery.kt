@@ -154,6 +154,10 @@ data class FilesystemState(
     val sortedList: List<Int> = emptyList(),
 )
 
+class FilesystemState2 {
+
+}
+
 abstract class GalleryViewModel(
     val isRemoteFilesystem: Boolean = true,
     var isThumbnailPriority: Boolean = true,
@@ -339,6 +343,7 @@ abstract class GalleryViewModel(
                     objects = currentState.objects.map { it?.copy(selected = all) }
                 )
             }
+            if (!all) nSelectedObjects = 0
             sortObjectList()
         }
     }
@@ -425,7 +430,7 @@ private fun GalleryThumbnail(obj: GalleryObject?, onClick: () -> Unit = {}, long
                 )
                 .graphicsLayer(clip = true)
                 .then(
-                    if (obj.isSelected()) Modifier.border(2.dp, Color.White) else Modifier
+                    if (obj.isSelected()) Modifier.border(2.dp, Color.Gray) else Modifier
                 )
         ) {
             if (obj != null) {
@@ -521,7 +526,7 @@ private fun GalleryFile(obj: GalleryObject?, onClick: () -> Unit = {}) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick: (Int) -> Unit = {}) {
+fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick: (Int) -> Unit = {}, showBackupDialog: () -> Unit = {}) {
     val state by model.uiState.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
     var isRefreshing by remember { mutableStateOf(false) }
@@ -529,6 +534,7 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
     var displayType by rememberSaveable { mutableStateOf(DisplayType.THUMBNAILS) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
     var rows by rememberSaveable { mutableIntStateOf(4) }
+
     @Composable
     fun menu() {
         Row(
@@ -548,6 +554,7 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
             Spacer(Modifier.weight(0.5f))
             if (model.isRemoteFilesystem) {
                 IconButton(onClick = {
+                    showBackupDialog()
                     haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                 }, modifier = Modifier) {
                     Icon(

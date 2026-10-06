@@ -23,6 +23,7 @@ import dev.danielc.libpak.Pak
 import dev.danielc.libpak.WiFi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
@@ -105,17 +106,20 @@ class MainActivity : ComponentActivity(), ComponentCallbacks2 {
         setContent {
             val navController = rememberNavController()
             MainNav(navController)
+            LaunchedEffect(Unit) {
+                externalEventsShared.collect {
+                    navController.navigate(ModuleInstanceRequest(it.name, targetIndex = 0, chosenSetupOption = it.setupOption))
+                }
+            }
             var hasLaunched by rememberSaveable { mutableStateOf(false) }
             if (!hasLaunched) {
-                LaunchedEffect(Unit) {
-                    hasLaunched = true
-                    externalEventsShared.collect {
-                        navController.navigate(ModuleInstanceRequest(it.name, targetIndex = 0, chosenSetupOption = it.setupOption))
-                    }
-                }
                 if (false && BuildInfo.isDebug) {
                     LaunchedEffect(Unit) {
-                        startModule("dummymod", "camera")
+                        hasLaunched = true
+                        CoroutineScope(Dispatchers.IO).launch {
+                            delay(200)
+                            startModule("dummymod", "camera")
+                        }
                     }
                 }
             }
