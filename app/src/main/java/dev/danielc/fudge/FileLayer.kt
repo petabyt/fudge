@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import dev.danielc.common.FileMetadata
 import dev.danielc.common.MimeType
 import dev.danielc.fudge.AndroidRuntime.decodeImageContents
-import dev.danielc.libpak.Exif
 import dev.danielc.libpak.Pak
 import java.io.File
 import java.io.FileInputStream
@@ -28,6 +27,8 @@ import java.io.InputStream
 import java.io.OutputStream
 
 object FileLayer {
+    external fun getExifThumbnail(filepath: String?): ByteArray?
+
     data class MediaStoreFile(
         val contentUri: Uri,
         val path: String,
@@ -37,7 +38,7 @@ object FileLayer {
     data class Handle(
         val fd: ParcelFileDescriptor,
         val uri: Uri,
-        val write: Boolean = true
+        val write: Boolean = true,
     ) {
         val streamIn: InputStream? = if (!write) FileInputStream(fd.fileDescriptor) else null
         val streamOut: OutputStream? = if (write) FileOutputStream(fd.fileDescriptor) else null
@@ -166,7 +167,7 @@ object FileLayer {
                 return null
             }
         } else {
-            val thumb = Exif.getExifThumbnail(file.path) ?: return null
+            val thumb = getExifThumbnail(file.path) ?: return null
             return decodeImageContents(thumb, null)
         }
     }

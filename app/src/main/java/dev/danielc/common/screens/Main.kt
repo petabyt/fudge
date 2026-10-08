@@ -458,7 +458,7 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
                             launchSingleTop = true
                             restoreState = false
                         }
-                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                        haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
                     }
                 )
             },

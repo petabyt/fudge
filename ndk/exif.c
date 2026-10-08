@@ -235,7 +235,7 @@ static uint8_t *file_add(void *arg, uint8_t *buffer, unsigned int new_len, unsig
 }
 
 JNIEXPORT jbyteArray JNICALL
-Java_dev_danielc_libpak_Exif_getExifThumbnail(JNIEnv *env, jclass clazz, jstring filepath) {
+Java_dev_danielc_fudge_FileLayer_getExifThumbnail(JNIEnv *env, jclass clazz, jstring filepath) {
 	const char *cfilepath = (*env)->GetStringUTFChars(env, filepath, 0);
 	FILE *f = fopen(cfilepath, "rb");
 	if (f == NULL) {

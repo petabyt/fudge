@@ -179,7 +179,7 @@ fun ModuleHomeScreen(module: ModuleInstance, hostNavController: NavController) {
                     enabled = screenSwitchProgress == null,
                     selected = navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.strId } == true,
                     onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                        haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
                         CoroutineScope(Dispatchers.IO).launch {
                             module.switchScreen(screen, isInNavBar = true, { job ->
                                 screenSwitchProgress = job.progressBarValue

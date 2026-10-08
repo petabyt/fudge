@@ -46,7 +46,8 @@ android {
         create("fujiapp") {
             dimension = "buildType"
             applicationId = "dev.danielc.fujiapp"
-            versionCode = 13
+            versionCode = 14
+            versionName = "Beta Release"
             resValue("string", "app_name", "Fudge")
         }
         create("nightly") {
@@ -144,8 +145,8 @@ tasks.named("preBuild") {
 }
 
 dependencies {
-    rootProject.extra["noNativeModule"] = true
-    implementation(project(":libpak"))
+//    rootProject.extra["noNativeModule"] = true
+//    implementation(project(":libpak"))
     implementation(project(":library-client-rtsp"))
 //    implementation(libs.androidx.compose.foundation)
 //    implementation(libs.androidx.compose.ui.unit)

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 project(fudge)
-add_link_options("-Wl,-z,max-page-size=16384")
+add_link_options("-Wl,-z,max-page-size=16384") # Global 16kb page size
 
 option(APP_WASM_SUPPORT "" ON)
 option(APP_QUICKJS_SUPPORT "" ON)
@@ -44,11 +44,7 @@ option(PAK_INCLUDE_BT "Bluetooth APIs" ON)
 option(PAK_INCLUDE_EXIF "EXIF Parser" ON)
 option(PAK_QUICKJS "QuickJS bindings" ${APP_QUICKJS_SUPPORT})
 option(PAK_WASM "" ${APP_WASM_SUPPORT})
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../pak)
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../pak ${CMAKE_CURRENT_BINARY_DIR}/libpak)
-else()
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../libpak ${CMAKE_CURRENT_BINARY_DIR}/libpak)
-endif()
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../libpak ${CMAKE_CURRENT_BINARY_DIR}/libpak)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
     main.c
@@ -56,13 +52,19 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
     module.c
     liveview.c
     exif.c
+    wifi.c
+    usb.c
+    android.c
+    bluetooth.c
 )
 target_compile_options(${CMAKE_PROJECT_NAME}
     PRIVATE -Wall -Wshadow -Wcast-qual -Wpedantic -Werror=incompatible-pointer-types -Werror=incompatible-pointer-types -Werror=deprecated-declarations -Werror=narrowing
 )
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE -Wl,--whole-archive pak -Wl,--no-whole-archive libjpeg-turbo)
+find_library(log-lib log)
+find_library(android-lib android)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE -Wl,--whole-archive pak -Wl,--no-whole-archive libjpeg-turbo ${log-lib} ${android-lib})
 get_target_property(PAK_INCLUDES_TEMP pak INCLUDE_DIRECTORIES)
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${PAK_INCLUDES_TEMP})
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${PAK_INCLUDES_TEMP} ${CMAKE_CURRENT_SOURCE_DIR}/../libpak/toolchain/include)
 if(APP_WASM_SUPPORT)
     target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE vmlib)
 endif()
@@ -72,6 +74,8 @@ endif()
 
 # pakrt alias for shared library modules
 add_library(pakrt INTERFACE)
+add_library(usb-1.0 INTERFACE)
+target_include_directories(usb-1.0 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../libpak/toolchain/include)
 #get_target_property(MY_INCLUDES pak INCLUDE_DIRECTORIES)
 target_link_libraries(pakrt INTERFACE ${CMAKE_PROJECT_NAME})
 #target_include_directories(pakrt INTERFACE ${MY_INCLUDES})
