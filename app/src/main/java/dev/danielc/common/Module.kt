@@ -10,6 +10,7 @@ import dev.danielc.common.screens.LiveFeedItem
 import dev.danielc.common.screens.LiveFeedModel
 import dev.danielc.common.screens.ModuleInstanceModel
 import dev.danielc.common.screens.ModuleIntervalometerModel
+import dev.danielc.common.screens.UiEvent
 import dev.danielc.common.screens.ViewerModel
 import dev.danielc.common.ui.BackupModel
 import dev.danielc.fudge.AndroidRuntime
@@ -548,7 +549,7 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
     }
     @CalledFromNative
     fun setUserInstruction(s: String?) {
-        connectingModel.setUserInstruction(s)
+        homeModelView.sendUiEvent(UiEvent(type = UiEvent.UiEventType.SNACKBAR_MESSAGE, message = s))
     }
     @CalledFromNative
     fun getMetadata(file: FileHandle): FileMetadata? {
@@ -705,7 +706,7 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
             val primaryAdapter = WiFi.getPrimaryAdapter()
             // Try connection over primary adapter in case user connected to access point manually
             if (primaryAdapter != null) {
-                connectingModel.setUserInstruction("Please connect to the WiFi Access point manually.")
+                setUserInstruction("Please connect to the WiFi Access point manually.")
                 val rc = tryConnectWiFi(primaryAdapter, { job -> connectCallback(job) })
                 if (rc == Pak.Error.CANCELLED) return
                 if (rc == 0) {

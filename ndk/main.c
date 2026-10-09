@@ -450,6 +450,18 @@ int pak_rt_add_wifi_connection(struct PakModule *mod, struct PakWiFiApFilter *fi
 	return 0;
 }
 
+int pak_rt_add_user_instruction(struct PakModule *mod, const char *message) {
+	JNIEnv *env = get_jni_env();
+	(*env)->PushLocalFrame(env, 10);
+
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
+	jmethodID method = (*env)->GetMethodID(env, module_c, "setUserInstruction", "(Ljava/lang/String;)V");
+	(*env)->CallVoidMethod(env, mod->rt->obj, method, (*env)->NewStringUTF(env, message));
+
+	(*env)->PopLocalFrame(env, NULL);
+	return 0;
+}
+
 int pak_rt_add_folder_info(struct PakModule *mod, const char *storage_name, const char *folder_path, unsigned int n_items, enum PakSortedBy sorted_by) {
 	// TODO:
 	return -1;

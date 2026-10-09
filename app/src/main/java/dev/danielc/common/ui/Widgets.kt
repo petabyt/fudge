@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -42,6 +43,9 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ShapeDefaults
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -313,6 +317,19 @@ fun IntGridGraph(
     }
 }
 
+@Composable
+fun SnackbarWithIcon(snackbarHostState: SnackbarHostState) {
+    SnackbarHost(hostState = snackbarHostState) { data ->
+        Snackbar(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(painter = painterResource(R.drawable.outline_info_24), contentDescription = "Success Status")
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(data.visuals.message)
+            }
+        }
+    }
+}
+
 data class DynamicScaffoldNavBarItem(
     val label: @Composable (() -> Unit) = {},
     val icon: @Composable (() -> Unit) = {},
@@ -331,11 +348,13 @@ fun DynamicScaffold(
     bottomBar: @Composable (() -> Unit)? = null,
     navBarItems: List<DynamicScaffoldNavBarItem> = emptyList(),
     overlay: @Composable (BoxScope.() -> Unit) = {},
+    snackbarHost: @Composable (() -> Unit) = {},
     content: @Composable ((PaddingValues) -> Unit),
 ) {
     BoxWithConstraints {
         val isLandscape = maxWidth > maxHeight
         Scaffold(
+            snackbarHost = snackbarHost,
             modifier = modifier,
             topBar = {
                 if (topBar != null) {

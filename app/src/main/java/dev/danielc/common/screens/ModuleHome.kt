@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +42,7 @@ import dev.danielc.common.ui.DefaultNavHost
 import dev.danielc.common.ui.DisconnectDialog
 import dev.danielc.common.ui.DynamicScaffold
 import dev.danielc.common.ui.DynamicScaffoldNavBarItem
+import dev.danielc.common.ui.SnackbarWithIcon
 import dev.danielc.common.ui.theme.FudgeTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,12 +63,14 @@ data class HomeState(
 data class UiEvent(
     val type: UiEventType,
     val screen: Screen = Screen.NONE,
+    val message: String? = null,
 ) {
     enum class UiEventType {
         SWITCH_SCREEN,
         SWITCH_NAV,
         GO_BACK_SCREEN,
         GO_BACK_NAV,
+        SNACKBAR_MESSAGE,
     }
 }
 
@@ -102,11 +107,10 @@ class ModuleInstanceModel(manifest: ModuleManifest, request: ModuleInstanceReque
         }
     }
 
-    fun sendUiEvent(type: UiEvent.UiEventType, screen: Screen = Screen.NONE) {
-        viewModelScope.launch {
-            _uiEvents.emit(UiEvent(type, screen))
-        }
+    fun sendUiEvent(ev: UiEvent) {
+        viewModelScope.launch { _uiEvents.emit(ev) }
     }
+    fun sendUiEvent(type: UiEvent.UiEventType, screen: Screen = Screen.NONE) { sendUiEvent(UiEvent(type, screen)) }
 
     fun goToScreen(screen: Screen, isInNavBar: Boolean = false) {
         sendUiEvent(if (isInNavBar) UiEvent.UiEventType.SWITCH_NAV else UiEvent.UiEventType.SWITCH_SCREEN, screen)
@@ -157,6 +161,7 @@ fun ModuleHomeScreen(module: ModuleInstance, hostNavController: NavController) {
         else -> 2
     } }
     var screenSwitchProgress by remember { mutableStateOf<Int?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
         module.homeModelView.uiEvents.collect { event ->
@@ -164,6 +169,8 @@ fun ModuleHomeScreen(module: ModuleInstance, hostNavController: NavController) {
                 navController.navigate(route = event.screen.strId)
             } else if (event.type == UiEvent.UiEventType.GO_BACK_NAV) {
                 navController.navigateUp()
+            } else if (event.type == UiEvent.UiEventType.SNACKBAR_MESSAGE) {
+                snackbarHostState.showSnackbar(event.message ?: "")
             }
         }
     }
@@ -197,6 +204,9 @@ fun ModuleHomeScreen(module: ModuleInstance, hostNavController: NavController) {
                         Text(stringResource(screen.getName()))
                     }
                 )
+            },
+            snackbarHost = {
+                SnackbarWithIcon(snackbarHostState)
             },
             overlay = {
                 screenSwitchProgress?.let {

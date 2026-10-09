@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -20,10 +22,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,10 +47,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.danielc.R
 import dev.danielc.common.BackgroundViewModel
 import dev.danielc.common.ModuleManifest
+import dev.danielc.common.ui.SnackbarWithIcon
 import dev.danielc.common.ui.dummyManifestList
 import dev.danielc.common.ui.theme.FudgeTheme
 import dev.danielc.common.ui.theme.errorButtonColors
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -107,11 +116,10 @@ data class ConnectingScreenState(
     val target: ModuleManifest.Target = dummyManifestList[0].targets[0],
     val transport: ModuleManifest.Transport? = null,
     val disableTryAgain: Boolean = false,
-    val userInstruction: String? = null,
     val loadingPopupText: String? = null,
 )
 
-open class ConnectingScreenModel(val consoleModel: ConsoleModel): BackgroundViewModel() {
+open class ConnectingScreenModel(val consoleModel: ConsoleModel, val events: SharedFlow<UiEvent>? = null): BackgroundViewModel() {
     private val _state = MutableStateFlow(ConnectingScreenState())
     val state = _state.asStateFlow()
     fun reset(target: ModuleManifest.Target, transport: ModuleManifest.Transport?) {
@@ -126,7 +134,6 @@ open class ConnectingScreenModel(val consoleModel: ConsoleModel): BackgroundView
     fun setProgress(p: Int?) { _state.update { it.copy(progress = p) } }
     fun setRequiredAction(a: ConnectingRequiredAction) { _state.update { it.copy(action = a) } }
     fun setPopupText(s: String?) { _state.update { it.copy(loadingPopupText = s) } }
-    fun setUserInstruction(s: String?) { _state.update { it.copy(userInstruction = s) } }
 
     open fun onCancel(): Boolean { return false }
     open fun onTryAgain() {}
@@ -140,6 +147,7 @@ fun ConnectingScreen(back: () -> Unit = {}, model: ConnectingScreenModel = Conne
     val scope = rememberCoroutineScope()
     val state by model.state.collectAsStateWithLifecycle()
     val consoleState by model.consoleModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
     @Composable
     fun ActionMessage(icon: Painter, text: String) {
         Column(Modifier
@@ -159,6 +167,14 @@ fun ConnectingScreen(back: () -> Unit = {}, model: ConnectingScreenModel = Conne
 
     BackHandler {
         back()
+    }
+
+    LaunchedEffect(Unit) {
+        model.events?.collect { event ->
+            if (event.type == UiEvent.UiEventType.SNACKBAR_MESSAGE) {
+                snackbarHostState.showSnackbar(event.message ?: "")
+            }
+        }
     }
 
     return FudgeTheme {
@@ -190,6 +206,9 @@ fun ConnectingScreen(back: () -> Unit = {}, model: ConnectingScreenModel = Conne
                     }
                 )
             },
+            snackbarHost = {
+                SnackbarWithIcon(snackbarHostState)
+            }
         ) { innerPadding ->
             Box(Modifier
                 .fillMaxSize()
@@ -270,20 +289,6 @@ fun ConnectingScreen(back: () -> Unit = {}, model: ConnectingScreenModel = Conne
                                 CircularProgressIndicator(Modifier.size(20.dp))
                             }
                             Text(stringResource(R.string.might_take_a_while), style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                }
-                state.userInstruction?.let {
-                    Box(Modifier
-                        .padding(10.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                        .align(Alignment.BottomCenter)) {
-                        Row(Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(painterResource(R.drawable.outline_info_24), contentDescription = null)
-                            Text(it)
                         }
                     }
                 }
