@@ -44,6 +44,7 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresPermission;
 
 public class Bluetooth {
     public static final String TAG = "bt";
@@ -281,7 +282,7 @@ public class Bluetooth {
             try {
                 if (receiver != null) Pak.getActivity().unregisterReceiver(receiver);
                 receiver = null;
-                if (gatt != null) gatt.close();
+                if (gatt != null) gatt.disconnect();
                 gatt = null;
             } catch (SecurityException ignored) {}
         }
@@ -386,6 +387,7 @@ public class Bluetooth {
                         Log.e(TAG, "connectGatt failed after timeout");
                         return Pak.Error.NO_CONNECTION;
                     }
+
                     //gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
                     //gatt.setPreferredPhy(BluetoothDevice.PHY_LE_1M_MASK, BluetoothDevice.PHY_LE_1M_MASK, BluetoothDevice.PHY_OPTION_NO_PREFERRED);
                     //gatt.requestMtu(185);
@@ -541,6 +543,7 @@ public class Bluetooth {
         static final int EVENT_SERVICES_DISCOVERED = 7;
         public abstract void onEvent(int code, BluetoothGattCharacteristic characteristic);
 
+        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             if (verbose) Log.d(TAG, "Connection state change: " + status);
@@ -548,6 +551,7 @@ public class Bluetooth {
                 onEvent(EVENT_CONNECTED, null);
                 device.isGattConnected = true;
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                gatt.close();
                 onEvent(EVENT_DISCONNECTED, null);
                 device.isGattConnected = false;
             }
