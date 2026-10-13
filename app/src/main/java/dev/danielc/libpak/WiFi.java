@@ -341,6 +341,8 @@ public class WiFi {
                 return Pak.Error.CANCELLED;
             } catch (SecurityException e) {
                 return Pak.Error.PERMISSION;
+            } catch (Exception e) {
+                return Pak.Error.UNDEFINED;
             }
         }
 

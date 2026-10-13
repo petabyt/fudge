@@ -194,6 +194,19 @@ public class Pak {
         }
     }
 
+    public static void resetAllAssociations() {
+        // TODO: Use mac address instead of association ID
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CompanionDeviceManager deviceManager = (CompanionDeviceManager)getActivity().getSystemService(Context.COMPANION_DEVICE_SERVICE);
+            List<String> list = deviceManager.getAssociations();
+            for (String i: list) {
+                try {
+                    deviceManager.disassociate(i);
+                } catch (NullPointerException ignored) { }
+            }
+        }
+    }
+
     public static void deleteDuplicateAssociations(AssociationInfo info) {
         // TODO: Use mac address instead of association ID
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

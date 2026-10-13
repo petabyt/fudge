@@ -88,21 +88,18 @@ struct PakGattCharacteristic *characteristic_from_jobject(JNIEnv *env, struct Pa
 
 JNIEXPORT void JNICALL Java_dev_danielc_libpak_Bluetooth_00024NativeBluetoothGattCallback_onEvent(JNIEnv *env, jobject thiz, jint id, jobject chr) {
 	set_jni_env_ctx(env, NULL);
-	(*env)->PushLocalFrame(env, 10);
 	struct PakBtDevice *dev = NULL;
 	jfieldID field = (*env)->GetFieldID(env, (*env)->FindClass(env, "dev/danielc/libpak/Bluetooth$NativeBluetoothGattCallback"), "struct", "[B");
 	jobject struct_o = (*env)->GetObjectField(env, thiz, field);
+	if (struct_o == NULL) return;
 	(*env)->GetByteArrayRegion(env, struct_o, 0, (jsize)sizeof(struct PakBtDevice *), (jbyte *)&dev);
-
-//	__android_log_print(ANDROID_LOG_ERROR, __func__, "%p %p", dev, dev->priv->ctx);
+	if (dev == NULL) return;
 
 	if (dev->priv->cb != NULL) {
 		struct PakGattCharacteristic *chr2 = (chr == NULL) ? NULL : characteristic_from_jobject(env, dev->priv->ctx, chr);
 		dev->priv->cb(dev->priv->ctx, id, dev, chr2, dev->priv->cb_arg);
 		if (chr != NULL) pak_bt_unref_gatt_characteristic(dev->priv->ctx, chr2);
 	}
-
-	(*env)->PopLocalFrame(env, NULL);
 }
 
 static jobject get_default_adapter(JNIEnv *env) {

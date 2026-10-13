@@ -56,11 +56,6 @@ public class Bluetooth {
         cancellableRunnable.cancelAll();
     }
 
-//    public static abstract class Listener {
-//        public abstract void onUpdate(Boolean bluetoothEnabled);
-//        public abstract void onAvailableDevices(@NonNull Device[] devices);
-//    }
-
     public static boolean checkPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return Pak.getActivity().checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
@@ -93,26 +88,6 @@ public class Bluetooth {
         return getDefaultAdapter().isEnabled();
     }
 
-//    public static void setupListeners(Listener listener) {
-//        BroadcastReceiver receiver = new BroadcastReceiver() {
-//            @Override
-//            public void onReceive(Context context, Intent intent) {
-//                final String action = intent.getAction();
-//                if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
-//                    final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
-//                    switch (state) {
-//                    case BluetoothAdapter.STATE_OFF:
-//                        listener.onUpdate(false);
-//                        break;
-//                    case BluetoothAdapter.STATE_ON:
-//                        listener.onUpdate(true);
-//                        break;
-//                    }
-//                }
-//            }
-//        };
-//    }
-
     public static Device fromAddress(@NonNull String address) {
         return new Device(getDefaultAdapter(), getDefaultAdapter().getRemoteDevice(address));
     }
@@ -130,7 +105,7 @@ public class Bluetooth {
         @NonNull private ParcelUuid[] serviceUuids;
         public BluetoothGatt gatt = null;
         BroadcastReceiver receiver = null;
-        MyBluetoothGattCallback callback = null;
+        NativeBluetoothGattCallback callback = null;
 
         @SuppressLint("MissingPermission")
         Device(@NonNull BluetoothAdapter adapter, @NonNull BluetoothDevice dev) {
@@ -260,7 +235,7 @@ public class Bluetooth {
                             bondSignal.notify();
                         }
                     }
-                    Log.d(TAG, "bt-action: " + action);
+                    Log.d(TAG, "Bt Event: " + action);
                 }
             };
             IntentFilter filter = new IntentFilter();
@@ -279,6 +254,7 @@ public class Bluetooth {
         }
 
         public void closeAll() {
+            callback.struct = null;
             try {
                 if (receiver != null) Pak.getActivity().unregisterReceiver(receiver);
                 receiver = null;
@@ -374,11 +350,11 @@ public class Bluetooth {
             });
         }
 
-        public int connectGatt(Context ctx, MyBluetoothGattCallback callback) {
+        public int connectGatt(Context ctx, NativeBluetoothGattCallback callback) {
             return cancellableRunnable.run(() -> {
                 try {
                     setupListener();
-                    gatt = dev.connectGatt(ctx, false, callback);
+                    gatt = dev.connectGatt(ctx, true, callback);
                     this.callback = callback;
                     synchronized (callback.connectSignal) {
                         callback.connectSignal.wait(5000);
@@ -409,7 +385,7 @@ public class Bluetooth {
             return characteristic.getDescriptors().get(index);
         }
         public byte[] getCachedValue(BluetoothGattCharacteristic characteristic) {
-            Bluetooth.MyBluetoothGattCallback.CachedCharUpdates val = callback.checkCachedUpdate(characteristic, true);
+            Bluetooth.NativeBluetoothGattCallback.CachedCharUpdates val = callback.checkCachedUpdate(characteristic, true);
             if (val != null) return val.value;
             return characteristic.getValue();
         }
@@ -496,15 +472,9 @@ public class Bluetooth {
         }
     }
 
-    public static class NativeBluetoothGattCallback extends MyBluetoothGattCallback {
-        byte[] struct;
-        NativeBluetoothGattCallback(Device device) {
-            super(device);
-        }
+    public static class NativeBluetoothGattCallback extends BluetoothGattCallback {
+        public byte[] struct;
         public native void onEvent(int code, BluetoothGattCharacteristic characteristic);
-    }
-
-    public abstract static class MyBluetoothGattCallback extends BluetoothGattCallback {
         final Bluetooth.Device device;
         final Object connectSignal = new Object();
         final Object gattServicesDiscovered = new Object();
@@ -530,7 +500,7 @@ public class Bluetooth {
             }
             return null;
         }
-        MyBluetoothGattCallback(Bluetooth.Device device) {
+        NativeBluetoothGattCallback(Bluetooth.Device device) {
             this.device = device;
         }
 
@@ -541,7 +511,6 @@ public class Bluetooth {
         static final int EVENT_GATT_UUID_CHANGED = 5;
         static final int EVENT_GATT_DESC_WRITTEN = 6;
         static final int EVENT_SERVICES_DISCOVERED = 7;
-        public abstract void onEvent(int code, BluetoothGattCharacteristic characteristic);
 
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         @Override
