@@ -354,7 +354,7 @@ public class Bluetooth {
             return cancellableRunnable.run(() -> {
                 try {
                     setupListener();
-                    gatt = dev.connectGatt(ctx, true, callback);
+                    gatt = dev.connectGatt(ctx, false, callback);
                     this.callback = callback;
                     synchronized (callback.connectSignal) {
                         callback.connectSignal.wait(5000);
