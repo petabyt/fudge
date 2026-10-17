@@ -25,6 +25,7 @@ data class ModuleManifest(
     val website: String? = null,
     val author: String? = null,
     val version: Int = 0,
+    val license: String? = null,
     val requiredRuntimeVersion: Int? = null,
     val runtimeVersion: Int = 0,
     val publicKey: String? = null,
@@ -33,7 +34,7 @@ data class ModuleManifest(
     val scriptPath: String = "",
     val targets: List<Target> = emptyList(),
     val manifestFilePath: String? = null,
-) {
+    ) {
     enum class Transport(val value: Int) {
         BLUETOOTH(1),
         USB(2),
@@ -202,6 +203,7 @@ fun manifestFromJson(text: String, filename: String): ModuleManifest? {
             description = root["description"]?.jsonPrimitive?.content,
             author = root["author"]?.jsonPrimitive?.content,
             website = root["website"]?.jsonPrimitive?.content,
+            license = root["license"]?.jsonPrimitive?.content,
             scriptPath = root["modulePath"]?.jsonPrimitive?.content ?: throw Error("missing modulePath field"),
             moduleType = when (root["moduleType"]?.jsonPrimitive?.content ?: throw Error("missing moduleType field")) {
                 "js" -> ModuleManifest.ModuleType.QUICKJS

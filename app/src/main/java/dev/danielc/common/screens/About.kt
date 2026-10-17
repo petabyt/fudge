@@ -34,15 +34,17 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import dev.danielc.R
+import dev.danielc.common.Runtime
 import dev.danielc.common.ui.theme.FudgeTheme
 import dev.danielc.fudge.BuildInfo
+import androidx.compose.runtime.collectAsState
 
 @Composable
 fun DependencyList() {
     val uriHandler = LocalUriHandler.current
     data class Dep(
         val name: String,
-        val url: String,
+        val url: String?,
         val license: String,
     )
 
@@ -58,9 +60,10 @@ fun DependencyList() {
     )
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(deps) { dep ->
+        @Composable
+        fun Card(dep: Dep) {
             Surface(Modifier.fillMaxWidth().clickable(onClick = {
-                uriHandler.openUri(dep.url)
+                if (dep.url != null) uriHandler.openUri(dep.url)
             }), color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(16.dp)) {
                 Row(Modifier.padding(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column {
@@ -70,6 +73,13 @@ fun DependencyList() {
                 }
             }
         }
+        items(deps) { dep -> Card(dep) }
+        item { Text("Installed modules:") }
+        items(Runtime.moduleManifests.value.map { Dep(
+            it.name,
+            it.website,
+            it.license ?: "?"
+        ) }) { dep -> Card(dep) }
     }
 }
 
