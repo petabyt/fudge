@@ -137,7 +137,7 @@ sealed interface Widget {
     data class BooleanSetting(override val args: Properties, val value: Boolean): Widget
     data class IntSetting(override val args: Properties, val value: Int): Widget
     data class SliderSetting(override val args: Properties, val value: Int, val min: Int, val max: Int): Widget
-    data class DropdownSetting(override val args: Properties, val index: Int, val options: List<String>): Widget {
+    data class ComboboxSetting(override val args: Properties, val index: Int, val options: List<String>): Widget {
         constructor(args: Properties, index: Int, options: Array<String>) : this(args, index, options.toList())
     }
     @Suppress("ArrayInDataClass")

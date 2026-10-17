@@ -37,9 +37,9 @@ data class ModuleManifest(
     enum class Transport(val value: Int) {
         BLUETOOTH(1),
         USB(2),
-        WIFI_AP(3),
+        WIFI_AP(3), // Station mode
         USB_DEVICE_MODE(4),
-        HOST_WIFI_AP(5),
+        HOST_WIFI_AP(5), // access point mode
         LOCAL_NETWORK_UDP(6),
         INTERNET(7);
         companion object {
@@ -71,8 +71,9 @@ data class ModuleManifest(
         val summary: String? = null,
         val products: List<String> = emptyList(),
         val setupOptions: List<SetupOption> = emptyList(),
-        val wifiFilter: WiFiFilter? = null,
+        val wifiFilters: List<WiFiFilter> = emptyList(),
         val bluetoothFilters: List<BluetoothFilter> = emptyList(),
+        val usbFilters: List<UsbFilter> = emptyList(),
     )
     data class WiFiFilter(
         val ssidPattern: String,
@@ -100,6 +101,11 @@ data class ModuleManifest(
         val vid: Int? = null,
         val usbClass: Int? = null,
     )
+    data class SsdpFilter(
+        val ip: String,
+        val port: Int,
+        val searchMessageTemplate: String,
+    )
     fun getModulePath(): String {
         if (manifestFilePath == null || moduleType == ModuleType.SHARED_LIBRARY) return scriptPath
         return manifestFilePath.replaceAfterLast("/", scriptPath)
@@ -113,6 +119,10 @@ fun manifestFromJson(text: String, filename: String): ModuleManifest? {
 
         val jsonTarget = root["targets"]?.jsonArray
 
+        fun parseHexStr(str: String?): Int? {
+            return str?.removePrefix("0x")?.removePrefix("0X")?.toInt(16)
+        }
+
         val targets = mutableListOf<ModuleManifest.Target>()
         if (jsonTarget != null) {
             for (target in jsonTarget) {
@@ -123,12 +133,23 @@ fun manifestFromJson(text: String, filename: String): ModuleManifest? {
                     deviceId = Device.fromId(target.jsonObject["deviceType"]?.jsonPrimitive?.content) ?: throw Error("Missing deviceType field")
                 )
 
-                val jsonWiFiFilter = target.jsonObject["wifiFilter"]?.jsonObject
-                if (jsonWiFiFilter != null) {
+                val jsonWiFiFilter = target.jsonObject["wifiFilters"]?.jsonArray
+                for (filter in jsonWiFiFilter.orEmpty()) {
                     t = t.copy(
-                        wifiFilter = ModuleManifest.WiFiFilter(
-                            ssidPattern = jsonWiFiFilter.jsonObject["ssidPattern"]?.jsonPrimitive?.content ?: throw Error("Missing ssidPattern field"),
-                            defaultPassword = jsonWiFiFilter.jsonObject["defaultPassword"]?.jsonPrimitive?.content
+                        wifiFilters = t.wifiFilters + ModuleManifest.WiFiFilter(
+                            ssidPattern = filter.jsonObject["ssidPattern"]?.jsonPrimitive?.content ?: throw Error("Missing ssidPattern field"),
+                            defaultPassword = filter.jsonObject["defaultPassword"]?.jsonPrimitive?.content
+                        )
+                    )
+                }
+
+                val jsonUsbFilters = target.jsonObject["usbFilters"]?.jsonArray
+                for (filter in jsonUsbFilters.orEmpty()) {
+                    t = t.copy(
+                        usbFilters = t.usbFilters + ModuleManifest.UsbFilter(
+                            vid = parseHexStr(filter.jsonObject["vid"]?.jsonPrimitive?.content),
+                            pid = parseHexStr(filter.jsonObject["pid"]?.jsonPrimitive?.content),
+                            usbClass = filter.jsonObject["usbClass"]?.jsonPrimitive?.int,
                         )
                     )
                 }

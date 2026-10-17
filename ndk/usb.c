@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <unistd.h>
+#include <runtime.h>
 #include <libusb.h>
 #include "ndk.h"
 
@@ -18,6 +19,7 @@ struct libusb_context {
 struct libusb_device {
 	struct libusb_context *ctx;
 	jobject device;
+	jobject wrapper_class_o;
 };
 
 struct libusb_device_handle {
@@ -59,6 +61,17 @@ void libusb_unref_device(libusb_device *dev) {
 int libusb_get_configuration(libusb_device_handle *dev_handle, int *config) {
 	*config = 0;
 	return 0;
+}
+
+libusb_device *pak_libusb_device_from_jobject(JNIEnv *env, jobject dev_o) {
+	(*env)->PushLocalFrame(env, 10);
+	jfieldID id = (*env)->GetFieldID(env, (*env)->FindClass(env, "dev/danielc/libpak/USB$Device"), "dev", "Landroid/hardware/usb/UsbDevice;");
+	jobject usb_dev_o = (*env)->GetObjectField(env, dev_o, id);
+	struct libusb_device *dev = calloc(sizeof(libusb_device), 1);
+	dev->device = (*env)->NewGlobalRef(env, usb_dev_o);
+	dev->wrapper_class_o = (*env)->NewGlobalRef(env, dev_o);
+	(*env)->PopLocalFrame(env, NULL);
+	return dev;
 }
 
 ssize_t libusb_get_device_list(libusb_context *ctx, libusb_device ***list) {
@@ -122,7 +135,7 @@ int libusb_get_device_descriptor(libusb_device *dev, struct libusb_device_descri
 
 int libusb_get_config_descriptor(libusb_device *dev, uint8_t config_index, struct libusb_config_descriptor **config) {
 	JNIEnv *env = get_jni_env();
-	jclass usb_dev_c = (*env)->FindClass(env, "android/hardware/usb/UsbDevice" );
+	jclass usb_dev_c = (*env)->FindClass(env, "android/hardware/usb/UsbDevice");
 	jclass usb_interf_c = (*env)->FindClass(env, "android/hardware/usb/UsbInterface" );
 	jclass usb_endpoint_c = (*env)->FindClass(env, "android/hardware/usb/UsbEndpoint" );
 
@@ -186,47 +199,6 @@ void libusb_free_config_descriptor(struct libusb_config_descriptor *config) {
 	free(config);
 }
 
-static int get_usb_permission(JNIEnv *env, jobject ctx, jobject man, jobject device) {
-	(*env)->PushLocalFrame(env, 20);
-
-	jclass man_c = (*env)->FindClass(env, "android/hardware/usb/UsbManager");
-
-	jstring pkg = jni_get_package_name(env, ctx);
-	jstring perm = jni_concat_strings2(env, pkg, (*env)->NewStringUTF(env, ".USB_PERMISSION"));
-
-	jclass intent_c = (*env)->FindClass(env, "android/content/Intent");
-	jmethodID intent_init = (*env)->GetMethodID(env, intent_c, "<init>", "(Ljava/lang/String;)V");
-	jobject permission_intent = (*env)->NewObject(env, intent_c, intent_init, perm);
-
-	jclass pending_intent_class = (*env)->FindClass(env, "android/app/PendingIntent");
-	jmethodID pending_intent_get_broadcast = (*env)->GetStaticMethodID(env, pending_intent_class, "getBroadcast", "(Landroid/content/Context;ILandroid/content/Intent;I)Landroid/app/PendingIntent;");
-
-	const jint FLAG_IMMUTABLE = 0x04000000;
-	jobject pending_intent = (*env)->CallStaticObjectMethod(env, pending_intent_class, pending_intent_get_broadcast, ctx, 0, permission_intent, FLAG_IMMUTABLE);
-
-	if (pending_intent == NULL) {
-		(*env)->PopLocalFrame(env, NULL);
-		return -1;
-	}
-
-	jmethodID req_perm_m = (*env)->GetMethodID(env, man_c, "requestPermission", "(Landroid/hardware/usb/UsbDevice;Landroid/app/PendingIntent;)V");
-	(*env)->CallVoidMethod(env, man, req_perm_m, device, pending_intent);
-
-	jmethodID has_perm_m = (*env)->GetMethodID(env, man_c, "hasPermission", "(Landroid/hardware/usb/UsbDevice;)Z");
-
-	for (int i = 0; i < 10; i++) {
-		// TODO: limit of 10 is kinda stupid. do something better
-		if ((*env)->CallBooleanMethod(env, man, has_perm_m, device)) {
-			(*env)->PopLocalFrame(env, NULL);
-			return 0;
-		}
-		usleep(1000 * 1000);
-	}
-
-	(*env)->PopLocalFrame(env, NULL);
-	return -1;
-}
-
 int libusb_open(libusb_device *dev, libusb_device_handle **dev_handle) {
 	JNIEnv *env = get_jni_env();
 	jobject ctx = get_jni_ctx();
@@ -234,7 +206,12 @@ int libusb_open(libusb_device *dev, libusb_device_handle **dev_handle) {
 
 	jclass man_c = (*env)->FindClass(env, "android/hardware/usb/UsbManager");
 
-	//get_usb_permission(env, ctx, man, dev->device);
+	jmethodID req_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/libpak/USB$Device"), "requestPermissionToOpen", "()I");
+	int rc = (*env)->CallIntMethod(env, dev->wrapper_class_o, req_m);
+	if (rc) {
+		pak_global_log("requestPermissionToOpen timeout");
+		return -1;
+	}
 
 	jmethodID open_dev_m = (*env)->GetMethodID(env, man_c, "openDevice", "(Landroid/hardware/usb/UsbDevice;)Landroid/hardware/usb/UsbDeviceConnection;");
 	jobject connection = (*env)->CallObjectMethod(env, dev->ctx->usbmanager, open_dev_m, dev->device);
@@ -260,7 +237,7 @@ int libusb_get_string_descriptor_ascii(libusb_device_handle *dev, uint8_t desc_i
 }
 
 void libusb_free_device_list(libusb_device **list, int unref_devices) {
-
+	// TODO
 }
 
 int libusb_set_auto_detach_kernel_driver(libusb_device_handle *dev_handle, int enable) {

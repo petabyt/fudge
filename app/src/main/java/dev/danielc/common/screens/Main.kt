@@ -48,6 +48,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -91,10 +92,11 @@ private val dummyOptions = listOf(
     ModuleManifest.SetupOption("wifi", "WiFi"),
     ModuleManifest.SetupOption("bluetooth", "Bluetooth"),
     ModuleManifest.SetupOption("local", "Local Network (Foo Bar Foo Bar)"),
+    ModuleManifest.SetupOption("usb", "USB", transport = ModuleManifest.Transport.USB),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
-//@Preview(showBackground = true, device = "id:pixel_9", uiMode = 32)
+@Preview(showBackground = true, device = "id:pixel_9", uiMode = 32)
 @Composable
 fun InstanceSetup(options: List<ModuleManifest.SetupOption> = dummyOptions, onClick: (ModuleManifest.SetupOption) -> Unit = {}, back: () -> Unit = {}) {
     return FudgeTheme {
@@ -125,8 +127,8 @@ fun InstanceSetup(options: List<ModuleManifest.SetupOption> = dummyOptions, onCl
                 verticalArrangement = Arrangement.spacedBy(10.dp, alignment = Alignment.Top)) {
                 items(options) { e ->
                     // TODO: Interesting colors
-                    val colors = when (e.name) {
-                        "bluetooth" -> Pair(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary)
+                    val colors = when (e.transport) {
+                        ModuleManifest.Transport.BLUETOOTH -> Pair(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary)
                         else -> Pair(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary)
                     }
                     Surface(
@@ -139,16 +141,23 @@ fun InstanceSetup(options: List<ModuleManifest.SetupOption> = dummyOptions, onCl
                     ) {
                         Row(Modifier.padding(20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Icon(
-                                when (e.name) {
-                                    "wifi" -> painterResource(R.drawable.outline_wifi_24)
-                                    "bluetooth" -> painterResource(R.drawable.outline_bluetooth_24)
-                                    "usb" -> painterResource(R.drawable.outline_usb_24)
+                                when (e.transport) {
+                                    ModuleManifest.Transport.WIFI_AP -> painterResource(R.drawable.outline_wifi_24)
+                                    ModuleManifest.Transport.BLUETOOTH -> painterResource(R.drawable.outline_bluetooth_24)
+                                    ModuleManifest.Transport.USB -> painterResource(R.drawable.outline_usb_24)
                                     else -> painterResource(R.drawable.outline_general_device_24)
                                 },
                                 contentDescription = null,
                                 tint = colors.second
                             )
                             Text(e.title, color = colors.second)
+                            if (e.transport == ModuleManifest.Transport.USB) {
+                                Text(
+                                    text = "WIP",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = colors.second.copy(alpha = 0.5f)
+                                )
+                            }
                         }
                     }
                 }
@@ -272,6 +281,7 @@ fun MainConnectScreen(navController: NavController, modifier: Modifier = Modifie
             CoroutineScope(Dispatchers.IO).launch {
                 isRefreshing = true
                 Runtime.refreshManifests()
+                Runtime.refreshConnectableDevices()
                 isRefreshing = false
             }
         },
@@ -307,7 +317,7 @@ fun MainConnectScreen(navController: NavController, modifier: Modifier = Modifie
                 }
                 if (deviceList.isNotEmpty()) {
                     item {
-                        Text(stringResource(R.string.bonded_devices))
+                        Text(stringResource(R.string.nearby_devices))
                     }
                 }
                 items(deviceList, key = { isRefreshing }) { dev ->
@@ -315,7 +325,8 @@ fun MainConnectScreen(navController: NavController, modifier: Modifier = Modifie
                         clicked(ModuleInstanceRequest(
                             dev.manifest.name,
                             dev.manifest.targets.indexOf(dev.target),
-                            deviceMacAddress = dev.macAddress,
+                            dev.getDefaultSetupOption(),
+                            chosenConnectableDeviceIndex = Runtime.connectableDevices.value.indexOf(dev),
                         ))
                     })
                 }
@@ -553,11 +564,7 @@ fun MainNav(navController: NavHostController) {
         }
         composable<ModuleInstanceRequest> { backStackEntry ->
             val request = backStackEntry.toRoute<ModuleInstanceRequest>()
-            val manifest = Runtime.getManifestFromName(request.manifestName)
-            if (manifest == null) {
-                throw Error("${request.manifestName} not found in manifest list")
-            }
-            val target = manifest.targets[request.targetIndex]
+            val target = request.getTarget()
             if (target.setupOptions.isNotEmpty() && request.chosenSetupOption == null) {
                 InstanceSetup(target.setupOptions, onClick = { opt ->
                     navController.navigate(request.copy(chosenSetupOption = opt.name))
@@ -565,7 +572,7 @@ fun MainNav(navController: NavHostController) {
                     navController.navigateUp()
                 })
             } else {
-                val model = viewModel(initializer = { ModuleInstanceModel(manifest, request) })
+                val model = viewModel(initializer = { ModuleInstanceModel(request) })
                 ModuleInstanceNav(model.module, backToMainScreen = {
                     navController.popBackStack(route = "home", inclusive = false)
                 })

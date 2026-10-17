@@ -19,6 +19,7 @@ import dev.danielc.fudge.ModuleLiveviewModel
 import dev.danielc.fudge.NativeModule
 import dev.danielc.libpak.Bluetooth
 import dev.danielc.libpak.Pak
+import dev.danielc.libpak.USB
 import dev.danielc.libpak.WiFi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -277,6 +278,14 @@ class ModuleConnectingScreenModel(val module: ModuleInstance) : ConnectingScreen
     }
 }
 
+private fun savedDeviceEntityToInfo(saved: SavedDeviceEntity?): SavedDeviceInfo? {
+    return if (saved == null) null else SavedDeviceInfo(
+        saved.uniqueIdentifier,
+        saved.name,
+        saved.auxillaryData,
+    )
+}
+
 abstract class ModuleBase: NativeModule() {
     private var jobs = mutableMapOf<Int, ModuleJob>()
     private var jobCounter = 0
@@ -349,9 +358,19 @@ abstract class ModuleBase: NativeModule() {
             onRequestFileContents(job.id, file)
         }
     }
-    fun tryConnectWiFi(net: WiFi.Adapter, onUpdate: JobUpdateCallback = {}): Int {
+    fun tryConnectWiFi(net: WiFi.Adapter, saved: SavedDeviceEntity?, onUpdate: JobUpdateCallback = {}): Int {
         return withJob(onUpdate) { job ->
-            onTryConnectWiFi(net, job.id)
+            onTryConnectWiFi(net, savedDeviceEntityToInfo(saved), job.id)
+        }
+    }
+    fun tryConnectUSB(device: USB.Device, saved: SavedDeviceEntity?, onUpdate: JobUpdateCallback = {}): Int {
+        return withJob(onUpdate) { job ->
+            onTryConnectUSB(device, savedDeviceEntityToInfo(saved), job.id)
+        }
+    }
+    fun tryConnectBluetooth(device: Bluetooth.Device, saved: SavedDeviceEntity?, onUpdate: JobUpdateCallback = {}): Int {
+        return withJob(onUpdate) { job ->
+            onTryConnectBluetooth(device, savedDeviceEntityToInfo(saved), job.id)
         }
     }
     fun runCommand(cmd: String, vararg params: String): Int {
@@ -362,15 +381,6 @@ abstract class ModuleBase: NativeModule() {
     }
     fun runCommand(cmd: Command): Int {
         return runCommand(cmd.cmd)
-    }
-    fun tryConnectBluetooth(device: Bluetooth.Device, saved: SavedDeviceEntity?, onUpdate: JobUpdateCallback = {}): Int {
-        return withJob(onUpdate) { job ->
-            onTryConnectBluetooth(device, if (saved == null) null else SavedDeviceInfo(
-                saved.uniqueIdentifier,
-                saved.name,
-                saved.auxillaryData,
-            ), job.id)
-        }
     }
     fun propChanged(pane: Widget): Int {
         return withJob({}) { job ->
@@ -388,7 +398,7 @@ data class ModuleInstanceRequest(
     val targetIndex: Int,
     val chosenSetupOption: String? = null,
     val savedDeviceUniqueId: String? = null,
-    val deviceMacAddress: String? = null,
+    val chosenConnectableDeviceIndex: Int? = null,
 ) {
     fun getManifest(): ModuleManifest {
         return Runtime.getManifestFromName(manifestName)!!
@@ -404,6 +414,7 @@ data class ModuleInstanceRequest(
         }
         return null
     }
+    fun getConnectableDevice(): ConnectableDevice? { return Runtime.connectableDevices.value.getOrNull(chosenConnectableDeviceIndex ?: return null) }
     fun getSavedDeviceEntity(): SavedDeviceEntity? {
         return if (savedDeviceUniqueId == null) null else Runtime.findSavedDeviceEntity(savedDeviceUniqueId)
     }
@@ -412,8 +423,11 @@ data class ModuleInstanceRequest(
 /**
  * Instance of a module with a single connection
  */
-class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRequest, val homeModelView: ModuleInstanceModel): ModuleBase() {
+class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: ModuleInstanceModel): ModuleBase() {
+    val manifest = request.getManifest()
+    val chosenConnectableDevice = request.getConnectableDevice()
     val storageDevices = MutableStateFlow(emptyList<StorageInfo>())
+
     val liveFeedModel = ModuleLiveFeedModel(this)
     val viewerViewModel = ViewerModel()
     val galleryViewModel = ModuleGalleryViewModel(this, viewerViewModel)
@@ -423,6 +437,7 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
     val dashboardModel = ModuleDashboardModel(this)
     val liveviewWorker = ModuleLiveviewModel(this)
     val backupModel = ModuleBackupModel(this)
+
     val target = manifest.targets[request.targetIndex]
     private val companionName = "${target.company} ${target.deviceId.getReadableName()}"
 
@@ -660,7 +675,7 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
                     request = request.copy(
                         chosenSetupOption = setupOption
                     )
-                    val rc = tryConnectWiFi(net)
+                    val rc = tryConnectWiFi(net, null)
                     if (rc == 0) {
                         homeModelView.back(false)
                     } else {
@@ -670,7 +685,7 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
             }
             connectingModel.setPopupText("Connecting to ${filter.ssidPattern ?: "?"}")
             connectingModel.setTryAgainDisabled(true)
-            WiFi.connectToAccessPointCompanion(filter, companionName, callback, true)
+            WiFi.connectToAccessPointCompanion(listOf(filter), companionName, callback, true)
             connectingModel.setTryAgainDisabled(false)
             connectingModel.setPopupText(null)
         }
@@ -681,7 +696,7 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
         liveFeedModel.start()
         switchScreen(Screen.DASHBOARD, false)
     }
-    private fun wifiConnectRoutine(wifi: ModuleManifest.WiFiFilter, saved: SavedDeviceEntity?) {
+    private fun wifiConnectRoutine(filters: List<ModuleManifest.WiFiFilter>, saved: SavedDeviceEntity?) {
         connectingModel.setTryAgainDisabled(true)
         val callback = object : WiFi.WiFiDiscoveryCallback() {
             override fun failed(reason: String, code: Int) {
@@ -689,7 +704,7 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
             }
             override fun onConnected(net: WiFi.Adapter) {
                 connectingModel.setPopupText(null)
-                if (tryConnectWiFi(net) == 0) {
+                if (tryConnectWiFi(net, saved) == 0) {
                     setWiFiDevice(net)
                     setIsConnected()
                 }
@@ -707,7 +722,7 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
             // Try connection over primary adapter in case user connected to access point manually
             if (primaryAdapter != null) {
                 setUserInstruction("Please connect to the WiFi Access point manually.")
-                val rc = tryConnectWiFi(primaryAdapter, { job -> connectCallback(job) })
+                val rc = tryConnectWiFi(primaryAdapter, saved, { job -> connectCallback(job) })
                 if (rc == Pak.Error.CANCELLED) return
                 if (rc == 0) {
                     setIsConnected()
@@ -718,17 +733,19 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
             }
         } else {
             if (saved == null) {
-                val filter = WiFi.ApFilter()
-                filter.ssidPattern = wifi.ssidPattern
-                filter.password = wifi.defaultPassword
-                WiFi.connectToAccessPointCompanion(filter, companionName, callback)
+                WiFi.connectToAccessPointCompanion(filters.map {
+                    val x = WiFi.ApFilter()
+                    x.ssidPattern = it.ssidPattern
+                    x.password = it.defaultPassword
+                    x
+                }, companionName, callback)
             } else {
                 if (saved.wifiInfo != null) {
                     val filter = WiFi.ApFilter()
                     filter.ssidPattern = saved.wifiInfo.ssid
                     filter.password = saved.wifiInfo.password
                     filter.bssid = saved.wifiInfo.bssid
-                    WiFi.connectToAccessPointCompanion(filter, companionName, callback)
+                    WiFi.connectToAccessPointCompanion(listOf(filter), companionName, callback)
                 }
             }
         }
@@ -767,8 +784,8 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
                 }
             }
 
-            if (request.deviceMacAddress != null) {
-                val dev = Bluetooth.fromAddress(request.deviceMacAddress!!) // wtf
+            if (chosenConnectableDevice is ConnectableDevice.ConnectableBtDevice && chosenConnectableDevice.macAddress != null) {
+                val dev = Bluetooth.fromAddress(chosenConnectableDevice.macAddress)
                 if (dev.isBonded) debugLog("Connecting to a bonded device")
                 doConnect(dev)
                 return
@@ -806,19 +823,34 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
         val savedDeviceInfo = request.getSavedDeviceEntity()
         val option = request.getSetupOption()
         val transport = when {
+            chosenConnectableDevice is ConnectableDevice.ConnectableUSBDevice -> ModuleManifest.Transport.USB
+            chosenConnectableDevice is ConnectableDevice.ConnectableBtDevice -> ModuleManifest.Transport.BLUETOOTH
             option != null -> option.transport
-            target.wifiFilter != null -> ModuleManifest.Transport.WIFI_AP
+            target.wifiFilters.isNotEmpty() -> ModuleManifest.Transport.WIFI_AP
             target.bluetoothFilters.isNotEmpty() -> ModuleManifest.Transport.BLUETOOTH
+            target.usbFilters.isNotEmpty() -> ModuleManifest.Transport.USB
             else -> null
         }
         connectingModel.reset(target, transport)
-        if (target.wifiFilter != null && transport == ModuleManifest.Transport.WIFI_AP) {
+        if (target.usbFilters.isNotEmpty() && transport == ModuleManifest.Transport.USB) {
+            if (chosenConnectableDevice is ConnectableDevice.ConnectableUSBDevice) {
+                val rc = tryConnectUSB(chosenConnectableDevice.device, savedDeviceInfo,{ job -> connectCallback(job) })
+                if (rc == 0) {
+                    setIsConnected()
+                    return
+                } else {
+                    disconnect("Failed to connect", rc)
+                }
+            } else {
+                debugLog("TODO")
+            }
+        } else if (target.wifiFilters.isNotEmpty() && transport == ModuleManifest.Transport.WIFI_AP) {
             if (!WiFi.checkPermission()) {
                 connectingModel.setRequiredAction(ConnectingRequiredAction.ACCEPT_PERMISSION)
                 WiFi.requestConnectPermission()
                 return
             }
-            wifiConnectRoutine(target.wifiFilter, savedDeviceInfo)
+            wifiConnectRoutine(target.wifiFilters, savedDeviceInfo)
         } else if (target.bluetoothFilters.isNotEmpty() && transport == ModuleManifest.Transport.BLUETOOTH) {
             bluetoothConnectRoutine(target.bluetoothFilters, savedDeviceInfo)
         } else if (transport == ModuleManifest.Transport.LOCAL_NETWORK_UDP) {
@@ -830,7 +862,7 @@ class ModuleInstance(val manifest: ModuleManifest, var request: ModuleInstanceRe
 
             val primaryAdapter = WiFi.getPrimaryAdapter()
             if (primaryAdapter != null) {
-                val rc = tryConnectWiFi(primaryAdapter, { job -> connectCallback(job) })
+                val rc = tryConnectWiFi(primaryAdapter, savedDeviceInfo, { job -> connectCallback(job) })
                 if (rc == 0) {
                     setIsConnected()
                     return

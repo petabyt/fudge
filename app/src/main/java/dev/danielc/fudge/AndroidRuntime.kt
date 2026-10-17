@@ -79,8 +79,9 @@ object AndroidRuntime {
     fun getDatabaseNullable(): AppDatabase? {
         return databaseInstance
     }
-    fun resetDatabase() {
+    fun resetEverything() {
         CoroutineScope(Dispatchers.IO).launch {
+            Pak.resetAllAssociations()
             getDatabase().clearAllTables()
         }
     }

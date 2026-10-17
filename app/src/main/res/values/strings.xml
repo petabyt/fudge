@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Fudge</string>
     <string name="connect_again">Connect again:</string>
-    <string name="bonded_devices">Bonded devices:</string>
+    <string name="nearby_devices">Nearby Devices:</string>
     <string name="debug_tag">(Debug)</string>
     <string name="nightly_tag">(Nightly)</string>
     <string name="alpha_tag">(Alpha)</string>
@@ -52,7 +52,7 @@
     <string name="store_downloads_in_per_device_subfolders">Store downloads in per-device subfolders</string>
     <string name="info">Info</string>
     <string name="grant_access_to_all_local_images_optional">Grant access to all local images (optional)</string>
-    <string name="reset_all_settings">Reset all settings</string>
+    <string name="reset_all_settings">Reset settings and clear connections</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
     <string name="pair_of_earbuds">Pair of Earbuds</string>

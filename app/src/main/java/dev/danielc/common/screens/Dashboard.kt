@@ -92,6 +92,7 @@ data class DashboardState(
     val temperature: Int? = null,
     val humidity: Int? = null,
     val firmwareVersion: String? = null,
+    // TODO: This is never set
     val connectionType: ModuleManifest.Transport? = null,
     val isSaved: Boolean = false,
 )
@@ -237,7 +238,7 @@ private fun budsState(): DashboardModel {
 //               Widget.Properties("st", "Something"),
 //                value = 123
 //            ),
-            Widget.DropdownSetting(
+            Widget.ComboboxSetting(
                 Widget.Properties("temp", "Noise Cancelling"),
                 index = 0,
                 options = listOf("Adaptive")
@@ -344,23 +345,23 @@ fun SettingsDialog(model: DashboardModel, close: () -> Unit = {}) {
 }
 
 @Composable
-fun DropdownDialog(close: () -> Unit = {}, dropdownSetting: Widget.DropdownSetting, onSelect: (Int) -> Unit = {}) {
+fun DropdownDialog(close: () -> Unit = {}, comboboxSetting: Widget.ComboboxSetting, onSelect: (Int) -> Unit = {}) {
     Dialog(onDismissRequest = {
         close()
     }) {
         Card(modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight(0.5f)) {
-            Text(dropdownSetting.args.title, modifier = Modifier.padding(10.dp))
+            Text(comboboxSetting.args.title, modifier = Modifier.padding(10.dp))
             LazyColumn {
-                itemsIndexed(dropdownSetting.options) { i, item ->
+                itemsIndexed(comboboxSetting.options) { i, item ->
                     Box(Modifier
                         .fillMaxWidth()
                         .clickable(onClick = {
                             onSelect(i)
                         })
                         .background(
-                            if (i == dropdownSetting.index) MaterialTheme.colorScheme.surfaceContainer.copy(
+                            if (i == comboboxSetting.index) MaterialTheme.colorScheme.surfaceContainer.copy(
                                 0.5f
                             ) else MaterialTheme.colorScheme.surfaceContainer
                         )) {
@@ -554,7 +555,7 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
     val state by model.state.collectAsStateWithLifecycle()
     val storageDevices by model.storageDevices.collectAsStateWithLifecycle()
     var showSettings by remember { mutableStateOf(false) }
-    var selectedDropdown by remember { mutableStateOf<Widget.DropdownSetting?>(null) }
+    var selectedDropdown by remember { mutableStateOf<Widget.ComboboxSetting?>(null) }
     val coroutineScope = rememberCoroutineScope()
     if (showSettings) {
         SettingsDialog(model, close = {
@@ -640,7 +641,7 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
                             }
                         }, fillMaxWidth = true)
                     }
-                    is Widget.DropdownSetting -> {
+                    is Widget.ComboboxSetting -> {
                         PaneState(PaneState.Color.NEUTRAL, content = {
                             Text(pane.args.title, style = MaterialTheme.typography.titleSmall)
                             Row(Modifier

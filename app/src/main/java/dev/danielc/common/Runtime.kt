@@ -7,6 +7,7 @@ import dev.danielc.fudge.AndroidRuntime.getDatabase
 import dev.danielc.fudge.FileLayer
 import dev.danielc.libpak.Bluetooth
 import dev.danielc.libpak.Pak
+import dev.danielc.libpak.USB
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -37,15 +38,37 @@ open class BackgroundViewModel {
     }
 }
 
-/**
- * A connectable device found or exposed
- */
-data class ConnectableDevice(
-    val name: String,
-    val target: ModuleManifest.Target,
-    val manifest: ModuleManifest,
-    val macAddress: String? = null,
-)
+@Suppress("ArrayInDataClass")
+sealed interface ConnectableDevice {
+    val name: String
+    val target: ModuleManifest.Target
+    val manifest: ModuleManifest
+
+    fun getDefaultSetupOption(): String? {
+        for (s in target.setupOptions) {
+            if (this is ConnectableUSBDevice && s.transport == ModuleManifest.Transport.USB) return s.name
+            if (this is ConnectableBtDevice && s.transport == ModuleManifest.Transport.BLUETOOTH) return s.name
+        }
+        return null
+    }
+
+    data class ConnectableLocalDevice(
+        override val name: String, override val target: ModuleManifest.Target, override val manifest: ModuleManifest,
+        val address: String,
+        val port: Int,
+        val datagram: ByteArray,
+    ): ConnectableDevice
+
+    data class ConnectableUSBDevice(
+        override val name: String, override val target: ModuleManifest.Target, override val manifest: ModuleManifest,
+        val device: USB.Device
+    ): ConnectableDevice
+
+    data class ConnectableBtDevice(
+        override val name: String, override val target: ModuleManifest.Target, override val manifest: ModuleManifest,
+        val macAddress: String?
+    ): ConnectableDevice
+}
 
 object Runtime {
     private val _trimMemorySignal = MutableSharedFlow<Unit>()
@@ -146,7 +169,7 @@ object Runtime {
                         continue
                     }
 
-                    list += ConnectableDevice(d.name, t, m, d.address)
+                    list += ConnectableDevice.ConnectableBtDevice(d.name, t, m, d.address)
                     return true
                 }
             }
@@ -163,6 +186,27 @@ object Runtime {
     }
 
     fun refreshConnectableDevices() {
+        val list = mutableListOf<ConnectableDevice>()
+        fun matchAgainstManifest(m: ModuleManifest, d: USB.Device): Boolean {
+            for (t in m.targets) {
+                for (b in t.usbFilters) {
+                    if (b.pid != null && b.pid != d.pid) continue
+                    if (b.vid != null && b.vid != d.vid) continue
+                    if (b.usbClass != null && b.usbClass != d.usbClass) continue
+                    list += ConnectableDevice.ConnectableUSBDevice(d.name, t, m, d)
+                    return true
+                }
+            }
+            return false
+        }
+        val usbDevices = USB.getConnectedDevices()
+        println(usbDevices)
+        for (d in usbDevices) {
+            for (m in moduleManifests.value) {
+                if (matchAgainstManifest(m, d)) break
+            }
+        }
+        connectableDevices.value = list
     }
 
     fun getManifestFromName(name: String): ModuleManifest? {

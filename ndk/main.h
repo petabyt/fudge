@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FUDGE_MAIN_H
+#define FUDGE_MAIN_H
 #include <jni.h>
 #include <pak.h>
 #include <runtime.h>
@@ -29,5 +30,8 @@ struct RuntimePriv {
 jobject pak_wifi_ap_filter_to_jobject(JNIEnv *env, struct PakWiFiApFilter *filter);
 struct PakBtDevice *pak_bt_device_from_jobject(JNIEnv *env, struct PakBt *ctx, jobject dev_o);
 struct PakWiFiAdapter *pak_wifi_adapter_from_jobject(JNIEnv *env, jobject wifi_adapter);
+libusb_device *pak_libusb_device_from_jobject(JNIEnv *env, jobject dev_o);
 
 int liveview_render_frame(JNIEnv *env, struct SurfacePriv *priv, void *buffer, unsigned int size);
+
+#endif

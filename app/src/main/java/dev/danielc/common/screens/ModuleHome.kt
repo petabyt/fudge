@@ -74,7 +74,7 @@ data class UiEvent(
     }
 }
 
-class ModuleInstanceModel(manifest: ModuleManifest, request: ModuleInstanceRequest) : ViewModel() {
+class ModuleInstanceModel(request: ModuleInstanceRequest) : ViewModel() {
     override fun onCleared() {
         runBlocking {
             module.deregister()
@@ -87,7 +87,7 @@ class ModuleInstanceModel(manifest: ModuleManifest, request: ModuleInstanceReque
     val uiEvents = _uiEvents.asSharedFlow()
     val initializationError = MutableStateFlow(false)
 
-    var module: ModuleInstance = ModuleInstance(manifest, request, this)
+    var module: ModuleInstance = ModuleInstance(request, this)
     init {
         if (!initializationError.value) module.initThread()
     }

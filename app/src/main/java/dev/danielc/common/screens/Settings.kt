@@ -128,7 +128,7 @@ fun SettingsScreen(navController: NavController = rememberNavController()) {
                         Text(stringResource(R.string.grant_access_to_all_local_images_optional))
                     }
                     Button(onClick = {
-                        AndroidRuntime.resetDatabase()
+                        AndroidRuntime.resetEverything()
                     }) {
                         Text(stringResource(R.string.reset_all_settings))
                     }

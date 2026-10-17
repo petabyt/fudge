@@ -34,6 +34,7 @@ import android.net.wifi.WifiInfo;
 import androidx.annotation.NonNull;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.regex.Pattern;
 
@@ -255,55 +256,60 @@ public class WiFi {
 
     /// Opens a dialog to save an access point as a companion device
     /// Then uses NetworkRequest to connect to the access point
-    public static int connectToAccessPointCompanion(ApFilter apFilter, String companionName, WiFiDiscoveryCallback wifiCallback, boolean dontAssociate) {
+    public static int connectToAccessPointCompanion(List<ApFilter> apFilters, String companionName, WiFiDiscoveryCallback wifiCallback, boolean dontAssociate) {
+        if (apFilters.isEmpty()) return -1;
         Context ctx = Pak.getActivity();
         AssociationInfo associationInfo = null;
         ScanResult scanResult = null;
-        boolean skipCompanionDialog = apFilter.hidden;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !apFilter.hidden) {
+        boolean skipCompanionDialog = false;
+        for (ApFilter filter : apFilters) {
             // Skip companion dialog if AP BSSID was already associated
-            CompanionDeviceManager deviceManager = (CompanionDeviceManager) Pak.getActivity().getSystemService(Context.COMPANION_DEVICE_SERVICE);
-            for (String address : deviceManager.getAssociations()) {
-                if (address.equals(apFilter.bssid)) {
-                    skipCompanionDialog = true;
-                    break;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !filter.hidden) {
+                CompanionDeviceManager deviceManager = (CompanionDeviceManager) Pak.getActivity().getSystemService(Context.COMPANION_DEVICE_SERVICE);
+                for (String address : deviceManager.getAssociations()) {
+                    if (address.equals(filter.bssid)) {
+                        skipCompanionDialog = true;
+                        break;
+                    }
                 }
-            }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 // Skip companion dialog and set BSSID if already associated
                 // TODO: This is probably not necessary
-                for (AssociationInfo i : deviceManager.getMyAssociations()) {
-                    try {
-                        ScanResult r = i.getAssociatedDevice().getWifiDevice();
-                        if (r.SSID.equals(apFilter.ssidPattern)) {
-                            apFilter.bssid = r.BSSID;
-                            skipCompanionDialog = true;
-                            break;
-                        }
-                    } catch (NullPointerException ignored) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    for (AssociationInfo i : deviceManager.getMyAssociations()) {
+                        try {
+                            ScanResult r = i.getAssociatedDevice().getWifiDevice();
+                            if (r.SSID.equals(filter.ssidPattern)) {
+                                filter.bssid = r.BSSID;
+                                skipCompanionDialog = true;
+                                break;
+                            }
+                        } catch (NullPointerException ignored) {}
                     }
                 }
             }
         }
 
+        // Not great assumption
+        ApFilter chosenAp = apFilters.get(0);
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !skipCompanionDialog) {
             CompanionDeviceManager deviceManager = (CompanionDeviceManager)ctx.getSystemService(Context.COMPANION_DEVICE_SERVICE);
-
-            WifiDeviceFilter.Builder builder = new WifiDeviceFilter.Builder();
-            if (apFilter.ssidPattern != null) {
-                builder.setNamePattern(Pattern.compile(apFilter.ssidPattern));
-            }
-            if (apFilter.bssid != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    builder.setBssid(MacAddress.fromString(apFilter.bssid));
-                }
-            }
-            WifiDeviceFilter filter = builder.build();
-
             AssociationRequest.Builder associationBuilder = new AssociationRequest.Builder();
-            associationBuilder.addDeviceFilter(filter);
+            for (ApFilter filter : apFilters) {
+                WifiDeviceFilter.Builder builder = new WifiDeviceFilter.Builder();
+                if (filter.ssidPattern != null) {
+                    builder.setNamePattern(Pattern.compile(filter.ssidPattern));
+                }
+                if (filter.bssid != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        builder.setBssid(MacAddress.fromString(filter.bssid));
+                    }
+                }
+                associationBuilder.addDeviceFilter(builder.build());
+            }
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 associationBuilder.setDisplayName(companionName);
             }
@@ -311,7 +317,8 @@ public class WiFi {
 //                Log.d(TAG, apFilter.ssidPattern + " doesn't look like regex, setting singleDevice to true");
 //                associationBuilder.setSingleDevice(true);
 //            }
-            associationBuilder.setSingleDevice(true); // Uses newer android dialog
+            // Probably not looking for more than 1 device. Also uses newer android dialog
+            associationBuilder.setSingleDevice(true);
             AssociationRequest request = associationBuilder.build();
             try {
                 Intent intent = Pak.companionAssociateGetResultBlocking(deviceManager, request);
@@ -333,8 +340,8 @@ public class WiFi {
                         //deviceManager.disassociate(scanResult.BSSID);
                     }
 
-                    apFilter.ssidPattern = scanResult.SSID;
-                    apFilter.bssid = scanResult.BSSID;
+                    chosenAp.ssidPattern = scanResult.SSID;
+                    chosenAp.bssid = scanResult.BSSID;
                 }
             } catch (Pak.CancelException e) {
                 wifiCallback.onUserCancelled();
@@ -348,13 +355,13 @@ public class WiFi {
 
         ScanResult finalScanResult = scanResult;
         AssociationInfo finalAssociationInfo = associationInfo;
-        wifiCallback.onConnecting(scanResult == null ? apFilter.ssidPattern : scanResult.SSID);
-        return connectToAccessPoint(apFilter, new WiFiDiscoveryCallback() {
+        wifiCallback.onConnecting(scanResult == null ? chosenAp.ssidPattern : scanResult.SSID);
+        return connectToAccessPoint(chosenAp, new WiFiDiscoveryCallback() {
             @Override
             public void onConnected(@NonNull Adapter net) {
                 Log.d(TAG, "Connected to network");
                 net.apAssociation = finalAssociationInfo;
-                net.savedPassword = apFilter.password;
+                net.savedPassword = chosenAp.password;
                 net.apScanResult = finalScanResult;
                 wifiCallback.onConnected(net);
             }
@@ -365,7 +372,7 @@ public class WiFi {
             }
         });
     }
-    public static int connectToAccessPointCompanion(ApFilter apFilter, String companionName, WiFiDiscoveryCallback wifiCallback) {
+    public static int connectToAccessPointCompanion(List<ApFilter> apFilter, String companionName, WiFiDiscoveryCallback wifiCallback) {
         return connectToAccessPointCompanion(apFilter, companionName, wifiCallback, false);
     }
 

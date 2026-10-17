@@ -7,6 +7,7 @@ import dev.danielc.common.FileHandle
 import dev.danielc.common.SavedDeviceEntity.WiFiInfo
 import dev.danielc.common.SavedDeviceInfo
 import dev.danielc.libpak.Bluetooth
+import dev.danielc.libpak.USB
 import dev.danielc.libpak.WiFi
 
 open class NativeModule {
@@ -61,7 +62,9 @@ open class NativeModule {
     @Synchronized
     external fun onFindConnection(job: Int): Int
     @Synchronized
-    external fun onTryConnectWiFi(adapter: WiFi.Adapter, job: Int): Int
+    external fun onTryConnectUSB(device: USB.Device, saved: SavedDeviceInfo?, job: Int): Int
+    @Synchronized
+    external fun onTryConnectWiFi(adapter: WiFi.Adapter, saved: SavedDeviceInfo?, job: Int): Int
     @Synchronized
     external fun onTryConnectBluetooth(adapter: Bluetooth.Device, saved: SavedDeviceInfo?, job: Int): Int
     @Synchronized

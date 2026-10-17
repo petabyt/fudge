@@ -9,7 +9,7 @@
 	url = https://github.com/petabyt/libjpeg-turbo
 [submodule "modules"]
 	path = modules
-	url = git@github.com:petabyt/modules.git
+	url = https://github.com/petabyt/gadget-libs
 [submodule "libpak"]
 	path = libpak
 	url = https://github.com/petabyt/libpak

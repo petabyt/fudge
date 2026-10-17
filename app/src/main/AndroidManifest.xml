@@ -36,6 +36,8 @@
     <!-- https://developer.android.com/develop/connectivity/bluetooth/companion-device-pairing -->
     <uses-feature android:name="android.software.companion_device_setup"/>
 
+    <uses-feature android:name="android.hardware.usb.host" android:required="true" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"

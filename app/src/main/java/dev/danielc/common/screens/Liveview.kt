@@ -102,19 +102,19 @@ open class LiveviewModel: BackgroundViewModel() {
 @Composable
 fun PreviewLiveview() {
     val model = LiveviewModel()
-    model.updateWidget(Widget.DropdownSetting(Widget.Properties("white-balance", "White Balance", Widget.Group.LIVEVIEW), index = -1, options = listOf(
+    model.updateWidget(Widget.ComboboxSetting(Widget.Properties("white-balance", "White Balance", Widget.Group.LIVEVIEW), index = -1, options = listOf(
         "Cloudy", "Incandescent", "Sunny"
     )))
-    model.updateWidget(Widget.DropdownSetting(Widget.Properties("shutter-speed", "Shutter Speed", Widget.Group.LIVEVIEW), index = -1, options = listOf(
+    model.updateWidget(Widget.ComboboxSetting(Widget.Properties("shutter-speed", "Shutter Speed", Widget.Group.LIVEVIEW), index = -1, options = listOf(
         "1/8000", "1/4000", "1/2000", "1/1000", "1/500", "1/250", "1/125", "1/60", "1/30", "1/15", "1/8", "1/4", "1/2", "1\"", "2\"", "4\"", "8\"", "15\"", "30\""
     )))
-    model.updateWidget(Widget.DropdownSetting(Widget.Properties("aperture", "Aperture", Widget.Group.LIVEVIEW), index = -1, options = listOf(
+    model.updateWidget(Widget.ComboboxSetting(Widget.Properties("aperture", "Aperture", Widget.Group.LIVEVIEW), index = -1, options = listOf(
         "f/1.0", "f/1.4", "f/2", "f/2.8", "f/4", "f/5.6", "f/8", "f/11", "f/16", "f/22", "f/32"
     )))
-    model.updateWidget(Widget.DropdownSetting(Widget.Properties("format", "Format", Widget.Group.LIVEVIEW), index = -1, options = listOf(
+    model.updateWidget(Widget.ComboboxSetting(Widget.Properties("format", "Format", Widget.Group.LIVEVIEW), index = -1, options = listOf(
         "JPEG", "RAW"
     )))
-    model.updateWidget(Widget.DropdownSetting(Widget.Properties("iso", "ISO", Widget.Group.LIVEVIEW), index = -1, options = listOf(
+    model.updateWidget(Widget.ComboboxSetting(Widget.Properties("iso", "ISO", Widget.Group.LIVEVIEW), index = -1, options = listOf(
         "6400", "3200", "1600", "800", "600", "400", "200", "100"
     )))
 
@@ -255,7 +255,7 @@ fun Liveview(modifier: Modifier = Modifier, model: LiveviewModel, intervalometer
         @Composable
         fun buttons(modifier: Modifier) {
             for (w in prioWidgets) {
-                if (w is Widget.DropdownSetting) {
+                if (w is Widget.ComboboxSetting) {
                     LiveviewButton(modifier, text = w.args.title, icon = widgetIcon(w.args.name), currentValue = if (w.index == -1) "-" else w.options.getOrElse(w.index, {"-"})) {
                         selectedWidget = if (selectedWidget == w.args.name) null else w.args.name
                     }
@@ -342,7 +342,7 @@ fun Liveview(modifier: Modifier = Modifier, model: LiveviewModel, intervalometer
         selectedWidget?.let { widgetName ->
             val widget = widgets.find { it.args.name == widgetName }
             if (widget == null) return
-            if (widget is Widget.DropdownSetting) {
+            if (widget is Widget.ComboboxSetting) {
                 Box(
                     modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth(0.8f)
                         .clip(RoundedCornerShape(12.dp))

@@ -81,32 +81,6 @@ Java_dev_danielc_fudge_NativeModule_init(JNIEnv *env, jobject thiz) {
 	return rc;
 }
 
-JNIEXPORT jint JNICALL
-Java_dev_danielc_fudge_NativeModule_onFindConnection(JNIEnv *env, jobject thiz, jint job) {
-	struct TempStruct info;
-	struct PakModule *mod = get_mod(env, thiz, &info);
-
-	int rc = PAK_ERR_UNIMPLEMENTED;
-	if (mod->on_find_connection) rc = mod->on_find_connection(mod, job);
-
-	release_mod(env, &info);
-	return rc;
-}
-
-JNIEXPORT jint JNICALL
-Java_dev_danielc_fudge_NativeModule_onTryConnectWiFi(JNIEnv *env, jobject thiz, jobject adapter_o, jint job) {
-	struct TempStruct info;
-	struct PakModule *mod = get_mod(env, thiz, &info);
-
-	struct PakWiFiAdapter *adapter = pak_wifi_adapter_from_jobject(env, adapter_o);
-
-	int rc = PAK_ERR_UNIMPLEMENTED;
-	if (mod->on_try_connect_wifi) rc = mod->on_try_connect_wifi(mod, adapter, NULL, job);
-
-	release_mod(env, &info);
-	return rc;
-}
-
 int pak_saved_info_from_jobject(JNIEnv *env, jobject saved_o, struct PakSavedConnection *saved) {
 	(*env)->PushLocalFrame(env, 10);
 
@@ -161,6 +135,63 @@ Java_dev_danielc_fudge_NativeModule_onTryConnectBluetooth(JNIEnv *env, jobject t
 
 	int rc = PAK_ERR_UNIMPLEMENTED;
 	if (mod->on_try_connect_bluetooth) rc = mod->on_try_connect_bluetooth(mod, device, saved_ptr, job);
+
+	if (saved_ptr != NULL) free_saved_info(saved_ptr);
+
+	release_mod(env, &info);
+	return rc;
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_danielc_fudge_NativeModule_onFindConnection(JNIEnv *env, jobject thiz, jint job) {
+	struct TempStruct info;
+	struct PakModule *mod = get_mod(env, thiz, &info);
+
+	int rc = PAK_ERR_UNIMPLEMENTED;
+	if (mod->on_find_connection) rc = mod->on_find_connection(mod, job);
+
+	release_mod(env, &info);
+	return rc;
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_danielc_fudge_NativeModule_onTryConnectWiFi(JNIEnv *env, jobject thiz, jobject adapter_o, jobject saved_o, jint job) {
+	struct TempStruct info;
+	struct PakModule *mod = get_mod(env, thiz, &info);
+
+	struct PakSavedConnection saved;
+	struct PakSavedConnection *saved_ptr = NULL;
+	if (saved_o != NULL) {
+		pak_saved_info_from_jobject(env, saved_o, &saved);
+		saved_ptr = &saved;
+	}
+
+	struct PakWiFiAdapter *adapter = pak_wifi_adapter_from_jobject(env, adapter_o);
+
+	int rc = PAK_ERR_UNIMPLEMENTED;
+	if (mod->on_try_connect_wifi) rc = mod->on_try_connect_wifi(mod, adapter, saved_ptr, job);
+
+	if (saved_ptr != NULL) free_saved_info(saved_ptr);
+
+	release_mod(env, &info);
+	return rc;
+}
+
+JNIEXPORT jint JNICALL Java_dev_danielc_fudge_NativeModule_onTryConnectUSB(JNIEnv *env, jobject thiz, jobject device_o, jobject saved_o, jint job) {
+	struct TempStruct info;
+	struct PakModule *mod = get_mod(env, thiz, &info);
+
+	struct PakSavedConnection saved;
+	struct PakSavedConnection *saved_ptr = NULL;
+	if (saved_o != NULL) {
+		pak_saved_info_from_jobject(env, saved_o, &saved);
+		saved_ptr = &saved;
+	}
+
+	libusb_device *device = pak_libusb_device_from_jobject(env, device_o);
+
+	int rc = PAK_ERR_UNIMPLEMENTED;
+	if (mod->on_try_connect_usb) rc = mod->on_try_connect_usb(mod, device, saved_ptr, job);
 
 	if (saved_ptr != NULL) free_saved_info(saved_ptr);
 
@@ -345,7 +376,7 @@ JNIEXPORT jint JNICALL Java_dev_danielc_fudge_NativeModule_onPropChanged(JNIEnv 
 	}
 
 	int rc = PAK_ERR_UNIMPLEMENTED;
-	if (mod->on_setting_changed) rc = mod->on_setting_changed(mod, job, name, &setting);
+	if (mod->on_widget_updated) rc = mod->on_widget_updated(mod, job, name, &setting);
 
 	(*env)->ReleaseStringUTFChars(env, name_s, name);
 

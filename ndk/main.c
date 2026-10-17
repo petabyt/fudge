@@ -326,18 +326,18 @@ int pak_rt_set_widget(struct PakModule *mod, const char *name, const struct PakW
 		jintArray arr = (*env)->NewIntArray(env, (jsize)s->u.graphv.n_points);
 		(*env)->SetIntArrayRegion(env, arr, 0, (jsize)s->u.graphv.n_points, (const jint *)s->u.graphv.points);
 		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/common/Widget$Properties;[I)V"), properties_o, arr);
-	} else if (s->type == PAK_DROPDOWN) {
-		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/common/Widget$DropdownSetting");
+	} else if (s->type == PAK_COMBOBOX) {
+		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/common/Widget$ComboboxSetting");
 
 		int n;
-		for (n = 0; s->u.dropdownv.list[n] != NULL; n++);
+		for (n = 0; s->u.comboboxv.list[n] != NULL; n++);
 
 		jintArray arr = (*env)->NewObjectArray(env, (jsize)n, (*env)->FindClass(env, "java/lang/String"), NULL);
 		for (int i = 0; i < n; i++) {
-			(*env)->SetObjectArrayElement(env, arr, i, (*env)->NewStringUTF(env, s->u.dropdownv.list[i]));
+			(*env)->SetObjectArrayElement(env, arr, i, (*env)->NewStringUTF(env, s->u.comboboxv.list[i]));
 		}
 		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/common/Widget$Properties;I[Ljava/lang/String;)V"), properties_o,
-			(jint)s->u.dropdownv.index_value,
+			(jint)s->u.comboboxv.index_value,
 			arr
 		);
 	}
