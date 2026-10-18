@@ -5,6 +5,7 @@ add_link_options("-Wl,-z,max-page-size=16384") # Global 16kb page size
 
 option(APP_WASM_SUPPORT "" ON)
 option(APP_QUICKJS_SUPPORT "" ON)
+option(APP_INCLUDED_PTP2 "" OFF)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2")
@@ -92,6 +93,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/dummy ${CMAKE_CURRENT_BI
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/nothing-buds ${CMAKE_CURRENT_BINARY_DIR}/nothing)
 # dummy goveelife module
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/goveelife ${CMAKE_CURRENT_BINARY_DIR}/goveelife)
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../modules/ptp2)
+if(APP_INCLUDED_PTP2)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/ptp2 ${CMAKE_CURRENT_BINARY_DIR}/ptp2)
 endif()
