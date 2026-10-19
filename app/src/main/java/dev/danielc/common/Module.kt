@@ -685,7 +685,10 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
             }
             connectingModel.setPopupText("Connecting to ${filter.ssidPattern ?: "?"}")
             connectingModel.setTryAgainDisabled(true)
-            WiFi.connectToAccessPointCompanion(listOf(filter), companionName, callback, true)
+            val rc = WiFi.connectToAccessPointCompanion(listOf(filter), companionName, callback, true)
+            if (rc != Pak.Error.CANCELLED && rc != 0) {
+                debugLog("<error>Association error: ${rc}")
+            }
             connectingModel.setTryAgainDisabled(false)
             connectingModel.setPopupText(null)
         }
@@ -732,8 +735,9 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                 }
             }
         } else {
+            var rc = 0
             if (saved == null) {
-                WiFi.connectToAccessPointCompanion(filters.map {
+                rc = WiFi.connectToAccessPointCompanion(filters.map {
                     val x = WiFi.ApFilter()
                     x.ssidPattern = it.ssidPattern
                     x.password = it.defaultPassword
@@ -745,8 +749,11 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                     filter.ssidPattern = saved.wifiInfo.ssid
                     filter.password = saved.wifiInfo.password
                     filter.bssid = saved.wifiInfo.bssid
-                    WiFi.connectToAccessPointCompanion(listOf(filter), companionName, callback)
+                    rc = WiFi.connectToAccessPointCompanion(listOf(filter), companionName, callback)
                 }
+            }
+            if (rc != Pak.Error.CANCELLED && rc != 0) {
+                debugLog("<error>Association error: ${rc}")
             }
         }
         connectingModel.setTryAgainDisabled(false)
@@ -813,7 +820,10 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                 }
             }
             connectingModel.setTryAgainDisabled(true)
-            Bluetooth.pairWithDeviceCompanion(filters, companionName, null,callback, true)
+            val rc = Bluetooth.pairWithDeviceCompanion(filters, companionName, null,callback, true)
+            if (rc != Pak.Error.CANCELLED && rc != 0) {
+                debugLog("<error>Association error: ${rc}")
+            }
             connectingModel.setTryAgainDisabled(false)
             connectingModel.setPopupText(null)
         }
