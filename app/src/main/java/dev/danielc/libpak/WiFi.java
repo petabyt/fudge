@@ -57,6 +57,9 @@ public class WiFi {
         Network net;
         long handle;
 
+        public void invalidateNetwork() { net = null; }
+        public Boolean isAvailable() { return net != null; }
+
         public Integer getAssociationId() {
             if (apAssociation == null) return null;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -85,6 +88,7 @@ public class WiFi {
     }
 
     public static void requestConnectPermission() {
+        // TODO: 'Can request only one set of permissions at a time'
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
             Pak.requirePermissionBlocking(Manifest.permission.ACCESS_LOCAL_NETWORK);
         }
@@ -194,17 +198,20 @@ public class WiFi {
 
         int maxAttempts = 2;
 
+        // NOTE: This callback will stick around for the lifetime of the connection, long after this function returns.
         class MyCallback extends ConnectivityManager.NetworkCallback {
             final Semaphore waitForCallback = new Semaphore(0, true);
             int attempts = 0;
             boolean onAvailableCalled = false;
+            WiFi.Adapter adapter = null;
             @Override
             public void onAvailable(@NonNull Network network) {
                 lastFoundWiFiDevice = network;
                 Log.d(TAG, "Network available");
                 if (!onAvailableCalled) {
                     onAvailableCalled = true;
-                    callback.onConnected(new Adapter(network));
+                    adapter = new Adapter(network);
+                    callback.onConnected(adapter);
                 }
                 waitForCallback.release();
             }
@@ -222,8 +229,13 @@ public class WiFi {
                 }
             }
             @Override
+            public void onLost(@NonNull Network network) {
+                if (adapter != null) adapter.invalidateNetwork();
+                Log.d(TAG, "onLost");
+            }
+            @Override
             public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
-                Log.e(TAG, "onCapabilitiesChanged");
+                Log.d(TAG, "onCapabilitiesChanged");
             }
         }
 
@@ -329,7 +341,7 @@ public class WiFi {
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     associationInfo = intent.getParcelableExtra(CompanionDeviceManager.EXTRA_ASSOCIATION);
-                    Pak.deleteDuplicateAssociations(associationInfo);
+                    //Pak.deleteDuplicateAssociations(associationInfo);
                 }
                 scanResult = intent.getParcelableExtra(CompanionDeviceManager.EXTRA_DEVICE);
                 // According to https://medium.com/@mike_21858/wifinetworkspecifier-prompts-and-localonlyhotspot-f596c7b84968

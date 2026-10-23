@@ -32,6 +32,8 @@ Install Beta builds:
 ## Modules
 Reverse-engineered protocol logic is separated from the frontend through a runtime and module system.
 
+The current set of modules are available here: https://github.com/petabyt/gadget-libs
+
 Like the Linux kernel module system, modules use low level Bluetooth or WiFi APIs to directly communicate with devices
 through their proprietary protocols. Modules can be installed on the fly without recompiling the app.
 
@@ -43,3 +45,4 @@ through their proprietary protocols. Modules can be installed on the fly without
   - Update real time data such as battery, storage, guages
   - Add/remove support for screens, features, and user settings
   - Handle screen navigation and block until device is ready
+

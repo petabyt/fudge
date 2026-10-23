@@ -678,7 +678,7 @@ public class Bluetooth {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 associationInfo = intent.getParcelableExtra(CompanionDeviceManager.EXTRA_ASSOCIATION);
                 Log.d(TAG, "Associated with " + associationInfo.getDeviceMacAddress());
-                Pak.deleteDuplicateAssociations(associationInfo);
+                //Pak.deleteDuplicateAssociations(associationInfo);
             }
             ScanResult result = intent.getParcelableExtra(CompanionDeviceManager.EXTRA_DEVICE);
             if (result == null) return Pak.Error.NON_FATAL;

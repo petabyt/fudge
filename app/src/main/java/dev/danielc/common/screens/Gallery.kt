@@ -154,8 +154,31 @@ data class FilesystemState(
     val sortedList: List<Int> = emptyList(),
 )
 
-class FilesystemState2 {
-
+class DeviceStorageState {
+    val filesystems: MutableList<FilesystemState> = mutableListOf()
+    val currentFilesystem: FilesystemState? = null
+    // List of indexes into currentFilesystem.objects
+    val currentFilesystemSortedList: List<Int> = emptyList()
+    val userSortBy: SortBy = SortBy.NEWEST_FIRST
+    data class FilesystemObject(
+        val metadata: FileMetadata? = null,
+        val thumbnail: ImageBitmap? = null,
+        var lastUpdated: TimeSource.Monotonic.ValueTimeMark = TimeSource.Monotonic.markNow(),
+        var invalidMetadata: Boolean = false,
+        var invalidThumbnail: Boolean = false,
+        val hasSaved: Boolean = false,
+        val selected: Boolean = false,
+    )
+    data class FilesystemState(
+        val storageName: String? = null,
+        val sizeBytes: Long? = null,
+        val usedBytes: Long? = null,
+        val objectListSortedOrder: SortBy = SortBy.NEWEST_FIRST,
+        val displayType: DisplayType = DisplayType.THUMBNAILS,
+        val objects: List<FilesystemObject> = emptyList(),
+    ) {
+        val nSelectedObjects: Int = 0
+    }
 }
 
 abstract class GalleryViewModel(

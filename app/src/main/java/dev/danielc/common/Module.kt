@@ -259,6 +259,7 @@ class ModuleConnectingScreenModel(val module: ModuleInstance) : ConnectingScreen
     var lastWiFiSetupOption: String? = null
     var isSecondaryConnection = false
     var secondaryConnectionJob: Job? = null
+    var lastWiFiAdapter: WiFi.Adapter? = null
     override fun onTryAgain() {
         if (isSecondaryConnection) {
             if (secondaryConnectionJob?.isCompleted ?: true) {
@@ -664,33 +665,45 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
             if (gotoScreen) homeModelView.goToScreen(Screen.CONNECT_SECONDARY, false)
             connectingModel.isSecondaryConnection = true
             setSetupOptionName(setupOption)
-            val callback = object : WiFi.WiFiDiscoveryCallback() {
-                override fun failed(reason: String, code: Int) {
-                    debugLog("<error>${reason}")
-                }
 
-                override fun onConnected(net: WiFi.Adapter) {
-                    debugLog("Found network")
-                    connectingModel.setPopupText(null)
-                    request = request.copy(
-                        chosenSetupOption = setupOption
-                    )
-                    val rc = tryConnectWiFi(net, null)
-                    if (rc == 0) {
-                        homeModelView.back(false)
-                    } else {
-                        debugLog("Failed to connect: ${rc}")
+            val prev = connectingModel.lastWiFiAdapter
+            if (prev != null && prev.isAvailable) {
+                val rc = tryConnectWiFi(prev, null)
+                if (rc == 0) {
+                    homeModelView.back(false)
+                } else {
+                    debugLog("Failed to connect: ${rc}")
+                }
+            } else {
+                val callback = object : WiFi.WiFiDiscoveryCallback() {
+                    override fun failed(reason: String, code: Int) {
+                        debugLog("<error>${reason}")
+                    }
+
+                    override fun onConnected(net: WiFi.Adapter) {
+                        debugLog("Connected to network")
+                        connectingModel.lastWiFiAdapter = net
+                        connectingModel.setPopupText(null)
+                        request = request.copy(
+                            chosenSetupOption = setupOption
+                        )
+                        val rc = tryConnectWiFi(net, null)
+                        if (rc == 0) {
+                            homeModelView.back(false)
+                        } else {
+                            debugLog("Failed to connect: ${rc}")
+                        }
                     }
                 }
+                connectingModel.setPopupText("Connecting to ${filter.ssidPattern ?: "?"}")
+                connectingModel.setTryAgainDisabled(true)
+                val rc = WiFi.connectToAccessPointCompanion(listOf(filter), companionName, callback, true)
+                if (rc != Pak.Error.CANCELLED && rc != 0) {
+                    debugLog("<error>Association error: ${rc}")
+                }
+                connectingModel.setTryAgainDisabled(false)
+                connectingModel.setPopupText(null)
             }
-            connectingModel.setPopupText("Connecting to ${filter.ssidPattern ?: "?"}")
-            connectingModel.setTryAgainDisabled(true)
-            val rc = WiFi.connectToAccessPointCompanion(listOf(filter), companionName, callback, true)
-            if (rc != Pak.Error.CANCELLED && rc != 0) {
-                debugLog("<error>Association error: ${rc}")
-            }
-            connectingModel.setTryAgainDisabled(false)
-            connectingModel.setPopupText(null)
         }
     }
     private fun setIsConnected() {

@@ -2,6 +2,7 @@
  * (allows kotlin code to be used through compose multiplatform) */
 package dev.danielc.fudge
 
+import android.companion.CompanionDeviceManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -10,7 +11,6 @@ import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import android.view.WindowManager
-import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.room.Room
@@ -18,6 +18,7 @@ import dev.danielc.common.AppDatabase
 import dev.danielc.common.AppSettingEntity
 import dev.danielc.common.ModuleInstance
 import dev.danielc.common.Runtime
+import dev.danielc.common.SavedDeviceEntity
 import dev.danielc.common.Timestamp
 import dev.danielc.libpak.Pak
 import kotlinx.coroutines.CoroutineScope
@@ -85,6 +86,18 @@ object AndroidRuntime {
             getDatabase().clearAllTables()
         }
     }
+    fun disassociateFromSavedDevice(saved: SavedDeviceEntity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val deviceManager = Pak.getActivity().getSystemService(Context.COMPANION_DEVICE_SERVICE) as CompanionDeviceManager
+            if (saved.bluetoothMacAddress != null) {
+                deviceManager.disassociate(saved.bluetoothMacAddress)
+            } else if (saved.androidAssociationId != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    deviceManager.disassociate(saved.androidAssociationId)
+                }
+            }
+        }
+    }
     suspend fun updateAppSetting(block: (AppSettingEntity) -> AppSettingEntity) {
         getDatabase().settingsDao().save(block(Runtime.appSettings.value))
     }
@@ -98,10 +111,6 @@ object AndroidRuntime {
     fun logGlobalLine(s: String) {
         Log.d("pak_global_log", s)
         Runtime.logGlobalLine(s)
-    }
-
-    fun stringHelper(@StringRes id: Int): String {
-        return Pak.getActivity().getString(id)
     }
 
     fun keepScreenOn(on: Boolean) {

@@ -109,6 +109,7 @@ object Runtime {
 
     fun deleteSavedDeviceEntity(dev: SavedDeviceEntity) {
         CoroutineScope(Dispatchers.IO).launch {
+            AndroidRuntime.disassociateFromSavedDevice(dev)
             AndroidRuntime.getDatabaseNullable()?.deviceDao()?.deleteDevice(dev)
         }
     }
@@ -200,7 +201,6 @@ object Runtime {
             return false
         }
         val usbDevices = USB.getConnectedDevices()
-        println(usbDevices)
         for (d in usbDevices) {
             for (m in moduleManifests.value) {
                 if (matchAgainstManifest(m, d)) break
@@ -218,113 +218,8 @@ object Runtime {
 
     fun refreshManifests() {
         val manifests = AndroidRuntime.getJsonManifestList()
-        loadModulesFromManifests(manifests)
-    }
-
-    fun logGlobalLine(s: String) {
-        mainLog.addLine(s)
-    }
-
-    fun loadModulesFromManifests(pathList: List<String>) {
         val list = mutableListOf<ModuleManifest>()
-//        list += ModuleManifest(
-//            isDraft = true,
-//            name = "dummymod",
-//            moduleType = ModuleManifest.ModuleType.SHARED_LIBRARY,
-//            scriptPath = "libdummy.so",
-//            targets = listOf(
-//                ModuleManifest.Target(
-//                    company = "Dummy",
-//                    summary = "Fake target that can be used to test this app",
-//                    deviceId = Device.GAME_CONTROLLER,
-//                    setupOptions = listOf(
-//                        ModuleManifest.SetupOption("camera", "Camera", ModuleManifest.Transport.WIFI_AP),
-//                        ModuleManifest.SetupOption("slow", "Camera (Slow)", ModuleManifest.Transport.WIFI_AP),
-//                        ModuleManifest.SetupOption("tethered", "Camera (tethered)", ModuleManifest.Transport.USB),
-//                    ),
-//                )
-//            ),
-//        )
-
-//        list += ModuleManifest(
-//            isDraft = true,
-//            name = "libfuji",
-//            description = "libfuji port",
-//            website = "https://github.com/petabyt/libfuji",
-//            author = "Daniel Cook",
-//            moduleType = ModuleManifest.ModuleType.SHARED_LIBRARY,
-//            scriptPath = "libfuji.so",
-//            targets = listOf(
-//                ModuleManifest.Target(
-//                    company = "Fujifilm",
-//                    summary = "All Fujifilm digital cameras",
-//                    deviceId = Device.PROFESSIONAL_CAMERA,
-//                    products = listOf("X-T1", "X-T2", "X-T3", "X-T4", "X-T5"),
-//                    wifiFilter = ModuleManifest.WiFiFilter("FUJIFILM-.*"),
-//                    bluetoothFilters = listOf(ModuleManifest.BluetoothFilter(
-//                        serviceUuids = listOf("117c4142-edd4-4c77-8696-dd18eebb770a"),
-////                        mfgData = byteArrayOf(0xD8.toByte(), 0x04, 0x02, 0xA0.toByte(), 0x48, 0x21,
-////                            0x80.toByte()
-////                        ),
-////                        mfgDataMask = byteArrayOf(0xff.toByte())
-//                    ), ModuleManifest.BluetoothFilter(
-//                        serviceUuids = listOf("a9d2b304-e8d6-4902-8336-352b772d7597")
-//                    )),
-//                    setupOptions = listOf(
-//                        ModuleManifest.SetupOption("wifi", "WiFi (Legacy)", ModuleManifest.Transport.WIFI_AP),
-//                        ModuleManifest.SetupOption("local-network", "PC AutoSave & Wireless Tether Shoot", ModuleManifest.Transport.LOCAL_NETWORK_UDP),
-//                        ModuleManifest.SetupOption("bluetooth", "Bluetooth", ModuleManifest.Transport.BLUETOOTH),
-//                        ModuleManifest.SetupOption("usb", "USB", ModuleManifest.Transport.USB),
-//                    ),
-//                )
-//            ),
-//        )
-
-//        list += ModuleManifest(
-//            isDraft = true,
-//            name = "cmf-nothing-audio",
-//            moduleType = ModuleManifest.ModuleType.SHARED_LIBRARY,
-//            scriptPath = "libcmfnothingaudio.so",
-//            targets = listOf(
-//                ModuleManifest.Target(
-//                    company = "Nothing",
-//                    summary = "CMF Nothing Audio devices",
-//                    deviceId = Device.EARBUDS,
-//                    products = listOf("Buds Pro 2", "Buds 2"),
-//                    bluetoothFilters = listOf(ModuleManifest.BluetoothFilter(
-//                        isClassic = false,
-//                        namePattern = "CMF.*",
-//                        mfgData = byteArrayOf(0x31, 0x44, 0x42, 0xee.toByte(), 0xbe.toByte(), 0x2c),
-//                        mfgDataMask = byteArrayOf(0xff.toByte(), 0xff.toByte()),
-//                    ))
-//                )
-//            ),
-//        )
-//
-//        list += ModuleManifest(
-//            isDraft = true,
-//            name = "goveelife",
-//            moduleType = ModuleManifest.ModuleType.SHARED_LIBRARY,
-//            scriptPath = "libgoveelife.so",
-//            targets = listOf(
-//                ModuleManifest.Target(
-//                    company = "GoveeLife",
-//                    summary = "GoveeLife smart home devices",
-//                    deviceId = Device.GENERIC_HOME_DEVICE,
-//                    products = listOf("thermometer"),
-//                    bluetoothFilters = listOf(ModuleManifest.BluetoothFilter(
-//                        namePattern = "GVH...._....",
-//                        serviceUuids = listOf("0000ec88-0000-1000-8000-00805f9b34fb"),
-//                        mfgData = byteArrayOf(0x4c, 0x0, 0x02, 0x15, 0x49, 0x4E, 0x54, 0x45, 0x4C, 0x4C, 0x49, 0x5F, 0x52, 0x4F, 0x43, 0x4B, 0x53, 0x5F, 0x48, 0x57, 0x50, 0x75,
-//                            0xF2.toByte(),
-//                            0xFF.toByte(), 0x0C),
-//                        // byteArrayOf(0x01, 0x00, 0x01, 0x01, 0x14, 0x48, 0x46, 0xA8.toByte())
-//                    ))
-//                )
-//            ),
-//        )
-
-        for (filename in pathList) {
+        for (filename in manifests) {
             val text = FileLayer.readFile(filename)
             if (text == null) {
                 logGlobalLine("Failed to read ${filename}")
@@ -334,5 +229,9 @@ object Runtime {
             list += manifest
         }
         moduleManifests.value = list
+    }
+
+    fun logGlobalLine(s: String) {
+        mainLog.addLine(s)
     }
 }

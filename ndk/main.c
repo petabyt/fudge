@@ -177,7 +177,9 @@ const char *pak_rt_get_client_name(void) {
 		jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/AndroidRuntime");
 		jmethodID is_job_cancelled = (*env)->GetStaticMethodID(env, module_c, "getDeviceFriendlyName", "()Ljava/lang/String;");
 		jstring s = (*env)->CallStaticObjectMethod(env, module_c, is_job_cancelled);
-		cstr = (*env)->GetStringUTFChars(env, s, NULL);
+		const char *utfstr = (*env)->GetStringUTFChars(env, s, NULL);
+		cstr = strdup(utfstr);
+		(*env)->ReleaseStringUTFChars(env, s, utfstr);
 		(*env)->PopLocalFrame(env, NULL);
 	}
 	return cstr;
