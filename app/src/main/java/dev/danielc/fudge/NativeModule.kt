@@ -14,7 +14,7 @@ open class NativeModule {
     var struct: ByteArray? = null
 
     private var takenAssociationId: Boolean = false
-    private var connectedBluetoothDevice: Bluetooth.Device? = null
+    var connectedBluetoothDevice: Bluetooth.Device? = null
     private var connectedWiFiAdapter: WiFi.Adapter? = null
 
     fun setBluetoothDevice(dev: Bluetooth.Device?) { connectedBluetoothDevice = dev }

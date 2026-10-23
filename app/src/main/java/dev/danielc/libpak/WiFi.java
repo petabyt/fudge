@@ -55,10 +55,15 @@ public class WiFi {
         public ScanResult apScanResult;
         AssociationInfo apAssociation;
         Network net;
+        ConnectivityManager.NetworkCallback callback;
         long handle;
 
         public void invalidateNetwork() { net = null; }
         public Boolean isAvailable() { return net != null; }
+        public void disassociate() {
+            ConnectivityManager connectivityManager = (ConnectivityManager)Pak.getActivity().getSystemService(Context.CONNECTIVITY_SERVICE);
+            connectivityManager.unregisterNetworkCallback(callback);
+        }
 
         public Integer getAssociationId() {
             if (apAssociation == null) return null;
@@ -148,14 +153,6 @@ public class WiFi {
         public void onConnecting(String ssid) {}
     }
 
-    public static class NativeWiFiDiscoveryCallback extends WiFiDiscoveryCallback {
-        byte[] struct;
-        @Override
-        public native void onConnected(@NonNull Adapter net);
-        @Override
-        public native void failed(@NonNull String reason, int code);
-    }
-
     /** Opens an Android 10+ popup to prompt the user to select a WiFi network
      * When bssid is provided in the filter, there will be no prompt at all.
      * */
@@ -211,6 +208,7 @@ public class WiFi {
                 if (!onAvailableCalled) {
                     onAvailableCalled = true;
                     adapter = new Adapter(network);
+                    adapter.callback = this;
                     callback.onConnected(adapter);
                 }
                 waitForCallback.release();

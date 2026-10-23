@@ -661,20 +661,17 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
     fun addWiFiConnection(filter: WiFi.ApFilter, setupOption: String, gotoScreen: Boolean = true) {
         connectingModel.lastWiFiApFilter = filter
         connectingModel.lastWiFiSetupOption = setupOption
+
         connectingModel.secondaryConnectionJob = CoroutineScope(Dispatchers.IO).launch {
             if (gotoScreen) homeModelView.goToScreen(Screen.CONNECT_SECONDARY, false)
             connectingModel.isSecondaryConnection = true
             setSetupOptionName(setupOption)
 
-            val prev = connectingModel.lastWiFiAdapter
-            if (prev != null && prev.isAvailable) {
-                val rc = tryConnectWiFi(prev, null)
-                if (rc == 0) {
-                    homeModelView.back(false)
-                } else {
-                    debugLog("Failed to connect: ${rc}")
-                }
+            if (!WiFi.checkPermission()) {
+                connectingModel.setRequiredAction(ConnectingRequiredAction.ACCEPT_PERMISSION)
+                WiFi.requestConnectPermission()
             } else {
+                connectingModel.setRequiredAction(ConnectingRequiredAction.NONE)
                 val callback = object : WiFi.WiFiDiscoveryCallback() {
                     override fun failed(reason: String, code: Int) {
                         debugLog("<error>${reason}")
@@ -692,6 +689,8 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                             homeModelView.back(false)
                         } else {
                             debugLog("Failed to connect: ${rc}")
+                            net.disassociate()
+                            net.invalidateNetwork()
                         }
                     }
                 }
