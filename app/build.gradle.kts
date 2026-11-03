@@ -20,6 +20,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        if (providers.gradleProperty("testRelease").orNull == "true") {
+            testBuildType = "release"
+        }
 
         // Nobody uses 32bit anymore, disabling 32bit arm/x86 for now
         //ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
