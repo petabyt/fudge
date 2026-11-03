@@ -17,7 +17,8 @@ apt-get update
 apt-get install -y --no-install-recommends \
     openjdk-21-jdk-headless \
     wget unzip zip git curl ca-certificates \
-    build-essential cmake esbuild file xxd jq \
+    build-essential cmake ninja-build esbuild file xxd jq python3 nasm \
+    libusb-1.0-0-dev libexif-dev \
     libncurses6 libstdc++6 lib32stdc++6 lib32z1 \
     locales
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
@@ -43,6 +44,7 @@ yes | sdkmanager --licenses >/dev/null
 sdkmanager --update
 sdkmanager \
     "platform-tools" \
+    "emulator" \
     "platforms;android-36" \
     "build-tools;36.0.0" \
     "build-tools;37.0.0" \
