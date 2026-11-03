@@ -5,6 +5,7 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -16,38 +17,116 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     permissions:
-      contents: write
+      contents: read
       packages: read
     steps:
-    - uses: actions/checkout@v4
-    - name: Pull submodules
-      run: |
-        git config --global --add safe.directory "$GITHUB_WORKSPACE"
-        git config --global url."https://github.com/".insteadOf "git@github.com:"
-        git submodule update --init --recursive --recommend-shallow
-    - name: Update to latest module versions
-      run: |
-        cd modules/libfuji && git pull origin master --recurse-submodules
-    - name: Build and sign with Gradle
-      timeout-minutes: 15
-      env:
-        KEYSTORE_FILE: release-key.jks
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      run: |
-        echo "${{ secrets.KEYSTORE_B64 }}" | base64 --decode > app/release-key.jks
-        bash gradlew assembleRelease
-    - name: Upload Latest Pre-release
-      if: github.event_name != 'pull_request'
-      uses: ncipollo/release-action@v1
-      with:
-        artifacts: "app/build/outputs/apk/nightly/release/*.apk"
-        tag: "latest"
-        name: "Nightly Build"
-        bodyFile: ".github/workflows/nightly.txt"
-        prerelease: true
-        allowUpdates: true
-        replacesArtifacts: true
-        commit: ${{ github.sha }}
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+      - name: Pull submodules
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git submodule update --init --recursive --recommend-shallow
+      - name: Build nightly and instrumentation APKs
+        timeout-minutes: 20
+        env:
+          KEYSTORE_FILE: release-key.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          set -eu
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            export KEYSTORE_PASSWORD=android KEY_ALIAS=ci-test KEY_PASSWORD=android
+            keytool -genkeypair -keystore app/release-key.jks -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" -alias "$KEY_ALIAS" -dname 'CN=CI Test' -keyalg RSA -validity 2
+          else
+            test -n "$KEYSTORE_B64" && test -n "$KEYSTORE_PASSWORD" && test -n "$KEY_ALIAS" && test -n "$KEY_PASSWORD"
+            printf '%s' "$KEYSTORE_B64" | base64 --decode > app/release-key.jks
+          fi
+          bash gradlew :app:assembleNightlyRelease :app:assembleNightlyReleaseAndroidTest -PtestRelease=true --no-daemon
+      - name: Upload APKs for testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-apks
+          path: |
+            app/build/outputs/apk/nightly/release/app-nightly-release.apk
+            app/build/outputs/apk/androidTest/nightly/release/app-nightly-release-androidTest.apk
+          if-no-files-found: error
+
+  emulator-test:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    container:
+      image: ghcr.io/petabyt/fudge:latest
+      options: --device /dev/kvm:/dev/kvm
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: petabyt/vcam
+          ref: master
+          path: .ci-vcam
+      - uses: actions/download-artifact@v4
+        with:
+          name: nightly-apks
+          path: apks
+      - name: Verify KVM
+        run: test -r /dev/kvm && test -w /dev/kvm
+      - name: Cache Android system image
+        uses: actions/cache@v4
+        with:
+          path: /opt/android-sdk/system-images/android-35/google_apis/x86_64
+          key: android-image-linux-x86_64-api35-google-apis-v1
+      - name: Install Android system image
+        run: sdkmanager 'system-images;android-35;google_apis;x86_64'
+      - name: Build vcam
+        run: |
+          cmake -S .ci-vcam -B .ci-vcam/build -G Ninja
+          cmake --build .ci-vcam/build --target vcam
+      - name: Run rig unit tests
+        run: python3 -m unittest discover -s test -p 'test_*.py' -v
+      - name: Run Fuji connection test
+        env:
+          VCAM_BINARY: ${{ github.workspace }}/.ci-vcam/build/vcam
+          FUDGE_APK: ${{ github.workspace }}/apks/nightly/release/app-nightly-release.apk
+          FUDGE_TEST_APK: ${{ github.workspace }}/apks/androidTest/nightly/release/app-nightly-release-androidTest.apk
+        run: python3 test/run_emulator_test.py
+      - name: Upload emulator diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-emulator-diagnostics
+          path: test-results/emulator/
+          if-no-files-found: ignore
+
+  publish:
+    needs: emulator-test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: nightly-apks
+          path: apks
+      - name: Upload Latest Pre-release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "apks/nightly/release/app-nightly-release.apk"
+          tag: "latest"
+          name: "Nightly Build"
+          bodyFile: ".github/workflows/nightly.txt"
+          prerelease: true
+          allowUpdates: true
+          replacesArtifacts: true
+          commit: ${{ github.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
