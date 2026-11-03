@@ -26,6 +26,8 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           git submodule update --init --recursive --recommend-shallow
+      - name: Update to latest module versions
+        run: cd modules/libfuji && git pull origin master --recurse-submodules
       - name: Build nightly and instrumentation APKs
         timeout-minutes: 20
         env:
