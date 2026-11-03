@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+import tempfile
 
 from rig import executable, wifi_arguments
 
