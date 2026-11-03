@@ -35,6 +35,13 @@ def main():
     base = [adb, "-s", serial]
     emulator_process = vcam_process = None
     failed = True
+
+    if not os.environ.get("ANDROID_AVD_HOME"):
+        os.environ["ANDROID_AVD_HOME"] = tempfile.mkdtemp(prefix="fudge-avd-")
+    avd_home = Path(os.environ["ANDROID_AVD_HOME"])
+    avd_home.mkdir(parents=True, exist_ok=True)
+    print(f"AVD directory: {avd_home}", flush=True)
+
     try:
         subprocess.run([adb, "start-server"], check=True, timeout=30)
         devices = subprocess.run([adb, "devices"], check=True, capture_output=True, text=True, timeout=30)
@@ -43,6 +50,14 @@ def main():
         subprocess.run([avdmanager, "create", "avd", "-n", avd, "-k",
                         "system-images;android-35;google_apis;x86_64"],
                        input="no\n", text=True, check=True, timeout=120)
+
+        avd_ini = avd_home / f"{avd}.ini"
+        if not avd_ini.is_file():
+            raise RuntimeError(
+                f"avdmanager did not create {avd_ini}; "
+                "check its output and Android SDK configuration"
+            )
+
         with (artifacts / "emulator.log").open("w") as log:
             emulator_process = subprocess.Popen([
                 emulator, "-avd", avd, "-port", "5554", "-no-window", "-no-audio",
