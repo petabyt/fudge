@@ -148,12 +148,9 @@ tasks.named("preBuild") {
 }
 
 dependencies {
-//    rootProject.extra["noNativeModule"] = true
-//    implementation(project(":libpak"))
-    implementation(project(":library-client-rtsp"))
-//    implementation(libs.androidx.compose.foundation)
-//    implementation(libs.androidx.compose.ui.unit)
-    //implementation(libs.androidx.material3)
+    if (providers.gradleProperty("multiplatform").orNull == "true") {
+        implementation(project(":common"))
+    }
 
     // libs
     implementation(libs.zoomable)
@@ -171,6 +168,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.kotlin.reflect)
     ksp(libs.androidx.room.compiler)
+    implementation(project(":library-client-rtsp"))
 
     // Test stuff
     testImplementation(libs.junit)

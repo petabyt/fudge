@@ -1,0 +1,1 @@
+/home/daniel/.konan/kotlin-native-prebuilt-linux-x86_64-2.4.20/klib/commonized/2.4.20

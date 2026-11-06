@@ -16,3 +16,8 @@ app/src/main/res/drawable/background1.jpg
 up.sh
 push.sh
 android_test_module
+
+ios/**/xcuserdata/
+ios/**/project.xcworkspace/xcuserdata/
+ios/build/
+ios/DerivedData/
