@@ -24,9 +24,14 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.ui)
         }
+        androidMain.dependencies {  }
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
+    }
+
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 }
 
