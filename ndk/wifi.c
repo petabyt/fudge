@@ -42,9 +42,9 @@ jobject pak_wifi_ap_filter_to_jobject(JNIEnv *env, struct PakWiFiApFilter *filte
 	jclass filter_c = (*env)->FindClass(env, "dev/danielc/libpak/WiFi$ApFilter");
 	jmethodID constructor = (*env)->GetMethodID(env, filter_c, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZ)V");
 	return (*env)->NewObject(env, filter_c, constructor,
-		filter->has_ssid ? (*env)->NewStringUTF(env, filter->ssid_pattern) : NULL,
-		filter->has_bssid ? (*env)->NewStringUTF(env, filter->bssid) : NULL,
-		filter->has_password ? (*env)->NewStringUTF(env, filter->password) : NULL,
+		filter->ssid_pattern ? (*env)->NewStringUTF(env, filter->ssid_pattern) : NULL,
+		filter->bssid ? (*env)->NewStringUTF(env, filter->bssid) : NULL,
+		filter->password ? (*env)->NewStringUTF(env, filter->password) : NULL,
 		filter->has_band ? filter->band : -1,
 		(jboolean)filter->is_hidden
 	);

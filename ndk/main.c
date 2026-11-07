@@ -200,7 +200,17 @@ int pak_rt_is_job_cancelled(struct PakModule *mod, int job) {
 	return (*env)->CallBooleanMethod(env, mod->rt->obj, is_job_cancelled, job);
 }
 
+static int ratelimit(struct PakModule *mod) {
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	int64_t now = (int64_t)ts.tv_sec * 1000000000LL + ts.tv_nsec;
+	if (now - mod->rt->last_ui_update < 10000000L) return 1;
+	mod->rt->last_ui_update = now;
+	return 0;
+}
+
 int pak_rt_set_progress_bar(struct PakModule *mod, int job, int percent) {
+	if (ratelimit(mod)) return 0;
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
@@ -211,6 +221,7 @@ int pak_rt_set_progress_bar(struct PakModule *mod, int job, int percent) {
 }
 
 int pak_rt_set_download_stats(struct PakModule *mod, int job, long time, unsigned int n_bytes) {
+	if (ratelimit(mod)) return 0;
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
@@ -471,11 +482,9 @@ int pak_rt_add_folder_info(struct PakModule *mod, const char *storage_name, cons
 
 JNIEXPORT jobject JNICALL Java_dev_danielc_fudge_InstrumentedTest_getTestWiFiApFilter(JNIEnv *env, jobject thiz) {
 	struct PakWiFiApFilter filter = {0};
-	filter.has_ssid = 1;
-	strcpy(filter.ssid_pattern, "Test.*");
+	filter.ssid_pattern = "Test.*";
 	filter.is_hidden = 1;
-	filter.has_password = 1;
-	strcpy(filter.password, "123456789");
+	filter.password = "123456789";
 	return pak_wifi_ap_filter_to_jobject(env, &filter);
 	//(*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/Exception"), "Failed assert");
 }

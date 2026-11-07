@@ -25,6 +25,8 @@ struct RuntimePriv {
 	unsigned int log_len;
 	unsigned int log_pos;
 	char *log_buf;
+
+	int64_t last_ui_update;
 };
 
 jobject pak_wifi_ap_filter_to_jobject(JNIEnv *env, struct PakWiFiApFilter *filter);
