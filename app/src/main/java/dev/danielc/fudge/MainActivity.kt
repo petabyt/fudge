@@ -16,11 +16,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.navigation.compose.rememberNavController
 import dev.danielc.BuildConfig
+import dev.danielc.common.BuildInfo
 import dev.danielc.common.ModuleInstanceRequest
+import dev.danielc.common.NativeRuntime
 import dev.danielc.common.Runtime
+import dev.danielc.common.mainBuildInfo
 import dev.danielc.common.screens.MainNav
-import dev.danielc.libpak.Pak
-import dev.danielc.libpak.WiFi
+import dev.danielc.common.Pak
+import dev.danielc.common.getBuildInfo
+import dev.danielc.common.WiFi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -30,6 +34,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 
 private data class Event(
     val name: String,
@@ -42,19 +47,6 @@ fun startModule(name: String, setupOption: String?) {
     CoroutineScope(Dispatchers.IO).launch {
         externalEvents.emit(Event(name, setupOption))
     }
-}
-
-object BuildInfo {
-    val time = SimpleDateFormat("MMMM dd yyyy", Locale.getDefault()).format(
-        Date(
-            BuildConfig.BUILD_TIME
-        )
-    )
-    val isNightly = BuildConfig.FLAVOR == "nightly"
-    val isDebug = BuildConfig.DEBUG
-    val packageName = BuildConfig.APPLICATION_ID
-    val version = BuildConfig.VERSION_NAME
-    val osVersion: String = "Android ${Build.VERSION.SDK_INT}"
 }
 
 class MainActivity : ComponentActivity(), ComponentCallbacks2 {
@@ -91,11 +83,24 @@ class MainActivity : ComponentActivity(), ComponentCallbacks2 {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (!AndroidRuntime.hasInited) {
-            AndroidRuntime.hasInited = true
+        mainBuildInfo = BuildInfo(
+            time = SimpleDateFormat("MMMM dd yyyy", Locale.getDefault()).format(
+                Date(
+                    BuildConfig.BUILD_TIME
+                )
+            ),
+            isNightly = BuildConfig.FLAVOR == "nightly",
+            isDebug = BuildConfig.DEBUG,
+            packageName = BuildConfig.APPLICATION_ID,
+            version = BuildConfig.VERSION_NAME,
+            osVersion = "Android ${Build.VERSION.SDK_INT}"
+        )
+
+        if (!NativeRuntime.hasInited) {
+            NativeRuntime.hasInited = true
             Pak.setupAndroidContext(this)
             System.loadLibrary("fudge")
-            AndroidRuntime.setup(this)
+            NativeRuntime.setup(this)
             WiFi.startNetworkListeners(this)
             CoroutineScope(Dispatchers.IO).launch {
                 Runtime.refreshManifests()
@@ -113,11 +118,11 @@ class MainActivity : ComponentActivity(), ComponentCallbacks2 {
             }
             var hasLaunched by rememberSaveable { mutableStateOf(false) }
             if (!hasLaunched) {
-                if (false && BuildInfo.isDebug) {
+                if (false && getBuildInfo().isDebug) {
                     LaunchedEffect(Unit) {
                         hasLaunched = true
                         CoroutineScope(Dispatchers.IO).launch {
-                            delay(200)
+                            delay(200.milliseconds)
                             startModule("dummymod", "camera")
                         }
                     }

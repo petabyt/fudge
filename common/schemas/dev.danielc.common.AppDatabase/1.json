@@ -1,0 +1,132 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "547334023ddde1fb7819df8fd487ff95",
+    "entities": [
+      {
+        "tableName": "saved_devices",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uniqueIdentifier` TEXT NOT NULL, `lastSeenTimestamp` INTEGER NOT NULL, `name` TEXT NOT NULL, `manifestName` TEXT NOT NULL, `targetIndex` INTEGER NOT NULL, `setupOption` TEXT, `bluetoothMacAddress` TEXT, `androidAssociationId` INTEGER, `auxillaryData` BLOB, `ssid` TEXT, `bssid` TEXT, `password` TEXT, PRIMARY KEY(`uniqueIdentifier`))",
+        "fields": [
+          {
+            "fieldPath": "uniqueIdentifier",
+            "columnName": "uniqueIdentifier",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeenTimestamp",
+            "columnName": "lastSeenTimestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "manifestName",
+            "columnName": "manifestName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetIndex",
+            "columnName": "targetIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "setupOption",
+            "columnName": "setupOption",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bluetoothMacAddress",
+            "columnName": "bluetoothMacAddress",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "androidAssociationId",
+            "columnName": "androidAssociationId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "auxillaryData",
+            "columnName": "auxillaryData",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "wifiInfo.ssid",
+            "columnName": "ssid",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "wifiInfo.bssid",
+            "columnName": "bssid",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "wifiInfo.password",
+            "columnName": "password",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uniqueIdentifier"
+          ]
+        }
+      },
+      {
+        "tableName": "app_settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `downloadsLocation` TEXT NOT NULL, `perDeviceSubFolder` INTEGER NOT NULL, `firstTime` INTEGER NOT NULL, `showWelcomeDialog` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "downloadsLocation",
+            "columnName": "downloadsLocation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "perDeviceSubFolder",
+            "columnName": "perDeviceSubFolder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstTime",
+            "columnName": "firstTime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "showWelcomeDialog",
+            "columnName": "showWelcomeDialog",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '547334023ddde1fb7819df8fd487ff95')"
+    ]
+  }
+}

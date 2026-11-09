@@ -12,7 +12,7 @@
 #include "thread.h"
 #include "main.h"
 
-JNIEXPORT void JNICALL Java_dev_danielc_fudge_AndroidRuntime_init(JNIEnv *env, jclass clazz) {
+JNIEXPORT void JNICALL Java_dev_danielc_common_NativeRuntime_init(JNIEnv *env, jclass clazz) {
 	set_jni_env_ctx(env, clazz);
 	pak_global_log("AndroidRuntime init");
 }
@@ -28,7 +28,7 @@ void pak_global_log(const char *fmt, ...) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	jstring buffer_s = (*env)->NewStringUTF(env, buffer);
-	jclass backend_c = (*env)->FindClass(env, "dev/danielc/fudge/AndroidRuntime");
+	jclass backend_c = (*env)->FindClass(env, "dev/danielc/common/NativeRuntime");
 	jmethodID log_global_m = (*env)->GetStaticMethodID(env, backend_c, "logGlobalLine", "(Ljava/lang/String;)V");
 	(*env)->CallStaticVoidMethod(env, backend_c, log_global_m, buffer_s);
 	(*env)->PopLocalFrame(env, NULL);
@@ -174,7 +174,7 @@ const char *pak_rt_get_client_name(void) {
 	static const char *cstr = NULL;
 	if (cstr == NULL) {
 		(*env)->PushLocalFrame(env, 10);
-		jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/AndroidRuntime");
+		jclass module_c = (*env)->FindClass(env, "dev/danielc/common/NativeRuntime");
 		jmethodID is_job_cancelled = (*env)->GetStaticMethodID(env, module_c, "getDeviceFriendlyName", "()Ljava/lang/String;");
 		jstring s = (*env)->CallStaticObjectMethod(env, module_c, is_job_cancelled);
 		const char *utfstr = (*env)->GetStringUTFChars(env, s, NULL);
@@ -454,7 +454,7 @@ int pak_rt_add_wifi_connection(struct PakModule *mod, struct PakWiFiApFilter *fi
 	jobject filter_o = pak_wifi_ap_filter_to_jobject(env, filter);
 
 	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
-	jmethodID method = (*env)->GetMethodID(env, module_c, "addWiFiConnection", "(Ldev/danielc/libpak/WiFi$ApFilter;Ljava/lang/String;Z)V");
+	jmethodID method = (*env)->GetMethodID(env, module_c, "addWiFiConnection", "(Ldev/danielc/common/WiFi$ApFilter;Ljava/lang/String;Z)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, method, filter_o,
 		(*env)->NewStringUTF(env, setup_option), true
 	);

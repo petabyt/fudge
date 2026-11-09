@@ -2,7 +2,6 @@ package dev.danielc.fudge
 
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.danielc.common.Runtime
 import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test

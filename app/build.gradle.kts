@@ -118,14 +118,13 @@ android {
 
 // https://developer.android.com/training/data-storage/room/migrating-db-versions
 class RoomSchemaArgProvider(
-  @get:InputDirectory
-  @get:PathSensitive(PathSensitivity.RELATIVE)
-  val schemaDir: File
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val schemaDir: File
 ) : CommandLineArgumentProvider {
-
-  override fun asArguments(): Iterable<String> {
-    return listOf("room.schemaLocation=${schemaDir.path}")
-  }
+    override fun asArguments(): Iterable<String> {
+        return listOf("room.schemaLocation=${schemaDir.path}")
+    }
 }
 ksp {
   arg(RoomSchemaArgProvider(File(projectDir, "schemas")))
@@ -148,9 +147,7 @@ tasks.named("preBuild") {
 }
 
 dependencies {
-    if (providers.gradleProperty("multiplatform").orNull == "true") {
-        implementation(project(":common"))
-    }
+    implementation(project(":common"))
 
     // libs
     implementation(libs.zoomable)
@@ -168,7 +165,6 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.kotlin.reflect)
     ksp(libs.androidx.room.compiler)
-    implementation(project(":library-client-rtsp"))
 
     // Test stuff
     testImplementation(libs.junit)
