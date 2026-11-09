@@ -79,6 +79,7 @@ import kotlinx.coroutines.launch
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 
@@ -557,7 +558,7 @@ fun PreviewViewer(navController: NavController = rememberNavController()) {
         scope.launch {
             while (state.currentDownloadProgress < 100) {
                 state = state.copy(currentDownloadProgress = state.currentDownloadProgress + 1)
-                delay(1)
+                delay(1.milliseconds)
             }
             state = state.copy(isLoading = false)
         }

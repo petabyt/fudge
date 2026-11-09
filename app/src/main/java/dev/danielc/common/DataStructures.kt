@@ -1,7 +1,9 @@
 package dev.danielc.common
+import androidx.compose.ui.graphics.ImageBitmap
 import dev.danielc.R
 import dev.danielc.common.MimeType.FILE
 import kotlinx.serialization.Serializable
+import kotlin.time.TimeSource
 
 fun longToFileSize(bytes: Long): String {
     if (bytes <= 0) return "0b"
@@ -286,26 +288,6 @@ enum class SortBy(val id: Int) {
     }
 }
 
-data class StorageInfo(
-    val name: String,
-    val nFiles: Int,
-    val itemsSortedBy: SortBy = SortBy.DEFAULT,
-    val sizeBytes: Long? = null,
-    val usedBytes: Long? = null,
-    val isLiveFeedMedium: Boolean = false,
-    val currentStatus: String? = null,
-    val currentProgress: Int? = null,
-) {
-    constructor(
-        name: String,
-        nFiles: Int,
-        itemsSortedBy: Int,
-        sizeBytes: Long,
-        usedBytes: Long,
-        isLiveFeedMedium: Boolean,
-    ) : this(name, nFiles, SortBy.fromId(itemsSortedBy)!!, if (sizeBytes == 0L) null else sizeBytes, if (usedBytes == 0L) null else usedBytes, isLiveFeedMedium)
-}
-
 enum class MimeType(val mediaTypeString: String, val alts: Array<String>? = null) {
     FILE("application/octet-stream"),
     FOLDER("inode/directory"),
@@ -417,3 +399,42 @@ data class Timestamp (
         }
     }
 }
+
+data class StorageInfo(
+    val storageName: String,
+    val nFiles: Int = objects.size,
+    val sizeBytes: Long? = null,
+    val usedBytes: Long? = null,
+    val isLiveFeedMedium: Boolean = false,
+    val currentStatus: String? = null,
+    val currentProgress: Int? = null,
+    val objectListSortedOrder: SortBy = SortBy.DEFAULT,
+    val objects: List<FilesystemObject> = emptyList(),
+    var nSelectedObjects: Int = 0
+) {
+    constructor(
+        name: String,
+        nFiles: Int,
+        itemsSortedBy: Int,
+        sizeBytes: Long,
+        usedBytes: Long,
+        isLiveFeedMedium: Boolean,
+    ) : this(
+        storageName = name,
+        nFiles = nFiles,
+        objectListSortedOrder = SortBy.fromId(itemsSortedBy)!!,
+        sizeBytes = if (sizeBytes == 0L) null else sizeBytes,
+        usedBytes = if (usedBytes == 0L) null else usedBytes,
+        isLiveFeedMedium = isLiveFeedMedium
+    )
+}
+
+data class FilesystemObject(
+    val metadata: FileMetadata? = null,
+    val thumbnail: ImageBitmap? = null,
+    var invalidMetadata: Boolean = false,
+    var invalidThumbnail: Boolean = false,
+    var lastUpdated: TimeSource.Monotonic.ValueTimeMark = TimeSource.Monotonic.markNow(),
+    val hasSaved: Boolean = false,
+    val selected: Boolean = false,
+)

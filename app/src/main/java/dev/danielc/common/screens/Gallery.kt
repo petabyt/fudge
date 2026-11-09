@@ -3,6 +3,7 @@ package dev.danielc.common.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -24,13 +25,11 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -80,6 +79,7 @@ import dev.danielc.R
 import dev.danielc.common.BackgroundViewModel
 import dev.danielc.common.FileHandle
 import dev.danielc.common.FileMetadata
+import dev.danielc.common.FilesystemObject
 import dev.danielc.common.MimeType
 import dev.danielc.common.SortBy
 import dev.danielc.common.StorageInfo
@@ -100,6 +100,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 
 private fun bitmapFromColor(
@@ -126,124 +127,75 @@ enum class DisplayType {
     VERTICAL_TABLE,
 }
 
-data class GalleryObject(
-    val metadata: FileMetadata? = null,
-    val thumbnail: ImageBitmap? = null,
-    var lastChecked: TimeSource.Monotonic.ValueTimeMark = TimeSource.Monotonic.markNow(),
-    var invalidMetadata: Boolean = false,
-    var invalidThumbnail: Boolean = false,
-    val hasSaved: Boolean = false,
-    val selected: Boolean = false,
-)
-fun GalleryObject?.isSelected(): Boolean {
-    return this?.selected ?: false
-}
-
 data class GalleryObjectReference(
     val index: Int,
-    // storageDevice?
+    // TODO: Folder
 )
-
-data class FilesystemState(
-    val storageName: String? = null,
-    val userSortBy: SortBy = SortBy.NEWEST_FIRST,
-    val objectListSortedOrder: SortBy = SortBy.NEWEST_FIRST,
-    val displayType: DisplayType = DisplayType.THUMBNAILS,
-    // object is null if it hasn't been loaded/checked yet
-    val objects: List<GalleryObject?> = emptyList(),
-    val sortedList: List<Int> = emptyList(),
-)
-
-class DeviceStorageState {
-    val filesystems: MutableList<FilesystemState> = mutableListOf()
-    val currentFilesystem: FilesystemState? = null
-    // List of indexes into currentFilesystem.objects
-    val currentFilesystemSortedList: List<Int> = emptyList()
-    val userSortBy: SortBy = SortBy.NEWEST_FIRST
-    data class FilesystemObject(
-        val metadata: FileMetadata? = null,
-        val thumbnail: ImageBitmap? = null,
-        var lastUpdated: TimeSource.Monotonic.ValueTimeMark = TimeSource.Monotonic.markNow(),
-        var invalidMetadata: Boolean = false,
-        var invalidThumbnail: Boolean = false,
-        val hasSaved: Boolean = false,
-        val selected: Boolean = false,
-    )
-    data class FilesystemState(
-        val storageName: String? = null,
-        val sizeBytes: Long? = null,
-        val usedBytes: Long? = null,
-        val objectListSortedOrder: SortBy = SortBy.NEWEST_FIRST,
-        val displayType: DisplayType = DisplayType.THUMBNAILS,
-        val objects: List<FilesystemObject> = emptyList(),
-    ) {
-        val nSelectedObjects: Int = 0
-    }
-}
 
 abstract class GalleryViewModel(
     val isRemoteFilesystem: Boolean = true,
     var isThumbnailPriority: Boolean = true,
-    initialState: FilesystemState = FilesystemState(),
-    var dir: FileLayer.Directory = FileLayer.Directory()
+    var downloadDir: FileLayer.Directory = FileLayer.Directory(),
+    private val currentFilesystem: MutableStateFlow<StorageInfo?> = MutableStateFlow(null)
 ) : BackgroundViewModel() {
-    private val _uiState = MutableStateFlow(initialState)
-    val uiState = _uiState.asStateFlow()
-    val queue: ArrayDeque<GalleryObjectReference> = ArrayDeque()
+    val currentFilesystemStateFlow = currentFilesystem.asStateFlow()
+
+    /** List of indexes into currentFilesystem.objects */
+    val currentFilesystemSortedList: MutableStateFlow<List<Int>> = MutableStateFlow(emptyList())
+    val userSortBy = MutableStateFlow(SortBy.NEWEST_FIRST)
+    // TODO: Possibly have a queue of fixed length
+    private val queue: ArrayDeque<GalleryObjectReference> = ArrayDeque()
     private val queueMutex = Mutex()
+
+    init {
+        if (currentFilesystem.value != null) sortObjectList()
+    }
 
     private var thread: Job? = null
     private var threadIsPaused: Boolean = true
-
-    var nSelectedObjects: Int = 0
 
     override fun onShutdown() {
         stop()
     }
 
     fun getMetadata(file: FileHandle): FileMetadata? {
-        return _uiState.value.objects.getOrNull(file.index)?.metadata
+        return currentFilesystem.value?.objects?.getOrNull(file.index)?.metadata
     }
     fun getThumbnail(file: FileHandle, offset: Int): ImageBitmap? {
-        return _uiState.value.objects.getOrNull(file.index + offset)?.thumbnail
+        return currentFilesystem.value?.objects?.getOrNull(file.index + offset)?.thumbnail
     }
 
     open fun onRefresh() {}
     open fun onShare(ref: GalleryObjectReference) {}
     open fun itemClicked(ref: GalleryObjectReference) {}
     open fun init() {}
+    open fun toggleStorageDevice() {}
     abstract fun fulfillThumbnail(file: GalleryObjectReference)
     abstract fun fulfillMetadata(file: GalleryObjectReference)
 
     companion object {
-        fun objectIsFulfilled(obj: GalleryObject?): Boolean {
+        fun objectIsFulfilled(obj: FilesystemObject?): Boolean {
             if (obj == null) return false
             return ((obj.metadata != null || obj.invalidMetadata) && (obj.thumbnail != null || obj.invalidThumbnail))
         }
     }
 
     fun setSortBy(sort: SortBy) {
-        _uiState.update { it.copy(userSortBy = sort) }
+        userSortBy.value = sort
+        // Probably a good idea to clear queue here
         sortObjectList()
     }
 
     private fun sortObjectList() {
-        if (_uiState.value.userSortBy != _uiState.value.objectListSortedOrder) {
-            _uiState.update {
-                it.copy(
-                    sortedList = (List(it.objects.size) { index -> it.objects.size - 1 - index })
-                )
-            }
+        val filesystem = currentFilesystem.value ?: return
+        if (userSortBy.value != filesystem.objectListSortedOrder) {
+            currentFilesystemSortedList.value = List(filesystem.objects.size) { index -> filesystem.objects.size - 1 - index }
         } else {
-            _uiState.update {
-                it.copy(
-                    sortedList = (List(it.objects.size) { index -> index })
-                )
-            }
+            currentFilesystemSortedList.value = List(filesystem.objects.size) { index -> index }
         }
     }
 
-    private fun checkObject(obj: GalleryObject?, ref: GalleryObjectReference): Boolean {
+    private fun checkObject(obj: FilesystemObject?, ref: GalleryObjectReference): Boolean {
         if (obj == null) {
             if (isThumbnailPriority) {
                 fulfillThumbnail(ref)
@@ -251,7 +203,7 @@ abstract class GalleryViewModel(
                 fulfillMetadata(ref)
             }
         } else {
-            obj.lastChecked = TimeSource.Monotonic.markNow()
+            obj.lastUpdated = TimeSource.Monotonic.markNow()
             if (obj.thumbnail == null && !obj.invalidThumbnail) {
                 fulfillThumbnail(ref)
             } else if (obj.metadata == null && !obj.invalidMetadata) {
@@ -265,10 +217,18 @@ abstract class GalleryViewModel(
 
     // Returns true when work was done
     private suspend fun tick(): Boolean {
-        val objects = _uiState.value.objects
+        val storage = currentFilesystem.value ?: return false
+        val objects = storage.objects
+        if (objects.size < storage.nFiles) {
+            currentFilesystem.update {
+                val filled = objects.toMutableList()
+                while (filled.size < storage.nFiles) filled.add(FilesystemObject())
+                it?.copy(objects = filled)
+            }
+        }
         if (queue.isEmpty()) {
             // Iterate all recently checked objects fulfill them more (recently seen by user, should be priority)
-            val newest = objects.sortedBy { it?.lastChecked }
+            val newest = objects.sortedBy { it.lastUpdated }
             for (i in newest.indices) {
                 if (checkObject(objects[i], GalleryObjectReference(i))) return true
             }
@@ -292,7 +252,7 @@ abstract class GalleryViewModel(
                         if (tick()) continue
                     }
                     try {
-                        delay(100)
+                        delay(100.milliseconds)
                     } catch (_: CancellationException) {
                         break
                     }
@@ -313,35 +273,34 @@ abstract class GalleryViewModel(
 
     fun reset() {
         CoroutineScope(Dispatchers.IO).launch {
-            _uiState.update { currentState ->
-                currentState.copy(objects = mutableListOf())
+            currentFilesystem.update {
+                it?.copy(objects = mutableListOf())
             }
         }
     }
 
-    fun setProperties(info: StorageInfo) {
+    fun switchStorageDevice(info: StorageInfo) {
         CoroutineScope(Dispatchers.IO).launch {
-            _uiState.update { currentState ->
-                val list = currentState.objects.toMutableList()
-                while (list.size < info.nFiles) list.add(null)
-                currentState.copy(
-                    objects = list,
-                    storageName = info.name,
-                    objectListSortedOrder = info.itemsSortedBy,
-                )
+            queueMutex.withLock {
+                queue.clear()
+                currentFilesystem.update {
+                    info
+                }
+                sortObjectList()
             }
-            sortObjectList()
         }
     }
 
-    private fun updateObject(i: Int, block: (GalleryObject) -> GalleryObject) {
+    private fun updateObject(i: Int, block: (FilesystemObject) -> FilesystemObject) {
         CoroutineScope(Dispatchers.IO).launch {
-            _uiState.update { currentState ->
-                val list = currentState.objects.toMutableList()
-                while (list.size <= i) list.add(null)
-                val obj = list[i] ?: GalleryObject()
-                list[i] = block(obj)
-                currentState.copy(objects = list)
+            currentFilesystem.update {
+                if (it == null) it else {
+                    val list = it.objects.toMutableList()
+                    while (list.size <= i) list.add(FilesystemObject())
+                    val obj = list[i]
+                    list[i] = block(obj)
+                    it.copy(objects = list)
+                }
             }
             sortObjectList()
         }
@@ -354,19 +313,21 @@ abstract class GalleryViewModel(
         updateObject(i) { it.copy(hasSaved = v) }
     }
     fun toggleIsSelected(i: Int) {
-        updateObject(i) {
-            if (it.selected) nSelectedObjects-- else nSelectedObjects++
-            it.copy(selected = !it.selected)
+        updateObject(i) { obj ->
+            CoroutineScope(Dispatchers.IO).launch {
+                currentFilesystem.update { it?.copy(nSelectedObjects = if (obj.selected) it.nSelectedObjects - 1 else it.nSelectedObjects + 1) }
+            }
+            obj.copy(selected = !obj.selected)
         }
     }
     fun setSelected(all: Boolean) {
         CoroutineScope(Dispatchers.IO).launch {
-            _uiState.update { currentState ->
-                currentState.copy(
-                    objects = currentState.objects.map { it?.copy(selected = all) }
-                )
+            currentFilesystem.update { currentState ->
+                currentState?.copy(
+                    objects = currentState.objects.map { it.copy(selected = all) }.toMutableList()
+                ) ?: currentState
             }
-            if (!all) nSelectedObjects = 0
+            if (!all) currentFilesystem.value?.nSelectedObjects = 0
             sortObjectList()
         }
     }
@@ -397,8 +358,9 @@ abstract class GalleryViewModel(
         CoroutineScope(Dispatchers.IO).launch {
             queueMutex.withLock {
                 for (i in indexes) {
+                    // Remove existing entries so they can be re-added to the top of the stack
                     queue.removeIf { it.index == i }
-                    val newIndex = _uiState.value.sortedList.getOrNull(i)
+                    val newIndex = currentFilesystemSortedList.value.getOrNull(i)
                     if (newIndex != null) {
                         queue.addLast(GalleryObjectReference(newIndex))
                     }
@@ -408,110 +370,94 @@ abstract class GalleryViewModel(
     }
     override fun onTrimMemory() {
         val nObjectsToFree = 10
-        if (_uiState.value.objects.isEmpty()) return
+        if ((currentFilesystem.value ?: return).objects.isEmpty()) return
         CoroutineScope(Dispatchers.IO).launch {
-            _uiState.update { currentState ->
-                // Sort objects by oldest and deref the thumbnail
-                val list = currentState.objects.toMutableList()
-                val oldest = _uiState.value.objects.sortedByDescending { it?.lastChecked }
-                var nFreed = 0
-                for (e in oldest) {
-                    if (e != null && e.thumbnail == null) {
-                        val index = list.indexOf(e)
-                        list[index] = list[index]?.copy(thumbnail = null)
-                        nFreed++
+            currentFilesystem.update { currentState ->
+                if (currentState == null) currentState else {
+                    // Sort objects by oldest and deref the thumbnail
+                    val list = currentState.objects.toMutableList()
+                    val oldest = currentState.objects.sortedByDescending { it.lastUpdated }
+                    var nFreed = 0
+                    for (e in oldest) {
+                        if (e.thumbnail == null) {
+                            val index = list.indexOf(e)
+                            list[index] = list[index].copy(thumbnail = null)
+                            nFreed++
+                        }
+                        if (nFreed >= nObjectsToFree) break else nFreed++
                     }
-                    if (nFreed >= nObjectsToFree) break else nFreed++
+                    currentState.copy(objects = list)
                 }
-                currentState.copy(objects = list)
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GalleryThumbnail(obj: GalleryObject?, onClick: () -> Unit = {}, longClick: () -> Unit = {}, scale: Float = 1f) {
+private fun GalleryThumbnail(obj: FilesystemObject, onClick: () -> Unit = {}, longClick: () -> Unit = {}, scale: Float = 1f) {
     val boxModifier = Modifier
         .aspectRatio(1f)
         .background(MaterialTheme.colorScheme.surfaceContainer)
-    val additionalScale = if (obj.isSelected()) 0.1f else 0f
-    CompositionLocalProvider(LocalRippleConfiguration provides FudgeRippleConfig(Color.White)) {
-        Box(
-            boxModifier
-                .combinedClickable(
-                    onClick = {
-                        onClick()
-                    },
-                    onLongClick = {
-                        longClick()
-                    }
-                )
-                .indication(
-                    indication = ripple(),
-                    interactionSource = remember { MutableInteractionSource() }
-                )
-                .graphicsLayer(clip = true)
-                .then(
-                    if (obj.isSelected()) Modifier.border(2.dp, Color.Gray) else Modifier
-                )
-        ) {
-            if (obj != null) {
-                val icon = MimeType.getIcon(obj.metadata?.getMimeType())
-                if (obj.thumbnail != null) {
-                    Image(modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer(
-                            scaleX = scale - additionalScale,
-                            scaleY = scale - additionalScale,
-                        ), bitmap = obj.thumbnail, contentDescription = null, contentScale = ContentScale.Crop)
+    Box(
+        boxModifier
+            .combinedClickable(
+                onClick = {
+                    onClick()
+                },
+                onLongClick = {
+                    longClick()
                 }
-                if (obj.thumbnail == null || obj.metadata?.getMimeType()?.isVideo() ?: false) {
-                    Icon(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .size(45.dp),
-                        painter = painterResource(icon),
-                        contentDescription = null,
-                    )
-                }
-                val filename = obj.metadata?.filename
-                if (filename != null) {
-                    Text(filename, modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .background(Color.Black.copy(alpha = 0.4f))
-                        .padding(horizontal = 4.dp),
-                        lineHeight = TextUnit(10f, TextUnitType.Sp),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
-                if (obj.hasSaved) {
-                    Icon(
-                        painterResource(R.drawable.outline_download_done_24),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .size(15.dp)
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
-                            .padding(2.dp)
-                    )
-                }
-            }
-            if (!GalleryViewModel.objectIsFulfilled(obj)) {
-                CircularProgressIndicator(modifier = Modifier
+            )
+            .graphicsLayer(clip = true)
+            .then(if (obj.selected) Modifier.border(4.dp, Color.Gray) else Modifier)
+    ) {
+        val icon = MimeType.getIcon(obj.metadata?.getMimeType())
+        if (obj.thumbnail != null) {
+            Image(modifier = Modifier
+                .fillMaxSize()
+                .then(if (obj.selected) Modifier.padding(4.dp) else Modifier)
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale,
+                ), bitmap = obj.thumbnail, contentDescription = null, contentScale = ContentScale.Crop)
+        }
+        if (obj.thumbnail == null || obj.metadata?.getMimeType()?.isVideo() ?: false) {
+            Icon(
+                modifier = Modifier
                     .align(Alignment.Center)
-                    .size(35.dp), color = ProgressIndicatorDefaults.linearColor.copy(0.5f))
-            }
+                    .size(45.dp),
+                painter = painterResource(icon),
+                contentDescription = null,
+            )
+        }
+        val filename = obj.metadata?.filename
+        if (filename != null) {
+            Text(filename, modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .background(Color.Black.copy(alpha = 0.4f))
+                .padding(horizontal = 4.dp),
+                lineHeight = TextUnit(10f, TextUnitType.Sp),
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+        if (obj.hasSaved) {
+            Icon(
+                painterResource(R.drawable.outline_download_done_24),
+                contentDescription = null,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(15.dp)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
+                    .padding(2.dp)
+            )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GalleryFile(obj: GalleryObject?, onClick: () -> Unit = {}) {
-    if (obj == null) return
+private fun GalleryFile(obj: FilesystemObject, onClick: () -> Unit = {}) {
     CompositionLocalProvider(LocalRippleConfiguration provides FudgeRippleConfig(Color.White)) {
         Box(
             Modifier
@@ -547,16 +493,16 @@ private fun GalleryFile(obj: GalleryObject?, onClick: () -> Unit = {}) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick: (Int) -> Unit = {}, showBackupDialog: () -> Unit = {}) {
-    val state by model.uiState.collectAsStateWithLifecycle()
+    val state by model.currentFilesystemStateFlow.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
     var isRefreshing by remember { mutableStateOf(false) }
     var showDeselect by remember { mutableStateOf(false) }
     var displayType by rememberSaveable { mutableStateOf(DisplayType.THUMBNAILS) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
     var rows by rememberSaveable { mutableIntStateOf(4) }
+    val userSortBy by model.userSortBy.collectAsStateWithLifecycle()
 
     @Composable
     fun menu() {
@@ -567,11 +513,19 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
                 .fillMaxWidth()
                 .padding(2.dp),
         ) {
-           state.storageName?.let {
+           state?.let {
                 Box(Modifier
                     .padding(4.dp)
-                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp))) {
-                    Text(it, color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.padding(6.dp))
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp))
+                    .clickable(onClick = {
+                        model.toggleStorageDevice()
+                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    })
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(6.dp)) {
+                        Text(it.storageName, color = MaterialTheme.colorScheme.onPrimary)
+                        Icon(painterResource(R.drawable.outline_arrow_drop_down_24), contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                    }
                 }
             }
             Spacer(Modifier.weight(0.5f))
@@ -612,7 +566,7 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
                 )
             }
             IconButton(onClick = {
-                model.setSortBy(if (state.userSortBy == SortBy.NEWEST_FIRST) SortBy.OLDEST_FIRST else SortBy.NEWEST_FIRST)
+                model.setSortBy(if (userSortBy == SortBy.NEWEST_FIRST) SortBy.OLDEST_FIRST else SortBy.NEWEST_FIRST)
                 haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
             }, modifier = Modifier) {
                 Icon(
@@ -671,6 +625,7 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
                 }
             },
         ) {
+            println(state?.nSelectedObjects)
             val rows = if (displayType == DisplayType.THUMBNAILS) rows else 1
             LazyVerticalGrid(
                 modifier = Modifier.fillMaxSize(),
@@ -681,15 +636,16 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
                     menu()
                 }
 
-                if (state.objects.isNotEmpty()) {
-                    itemsIndexed(state.sortedList.toList()) { _, entry ->
-                        val obj = state.objects.getOrNull(entry)
-                        if (displayType == DisplayType.THUMBNAILS) {
+                if (state?.objects?.isNotEmpty() ?: false) {
+                    itemsIndexed(model.currentFilesystemSortedList.value) { _, entry ->
+                        val obj = state?.objects?.getOrNull(entry)
+                        if (obj == null) {}
+                        else if (displayType == DisplayType.THUMBNAILS) {
                             GalleryThumbnail(obj, onClick = {
-                                if (obj.isSelected()) {
+                                if (obj.selected) {
                                     model.toggleIsSelected(entry)
                                     haptic.performHapticFeedback(HapticFeedbackType.ToggleOff)
-                                } else if (model.nSelectedObjects != 0) {
+                                } else if (state?.nSelectedObjects != 0) {
                                     model.toggleIsSelected(entry)
                                     haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
                                 } else {
@@ -737,28 +693,25 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
 @Preview(showBackground = true, device = "id:pixel_7", uiMode = 32)
 @Composable
 fun PreviewGalleryScreen(navController: NavHostController = rememberNavController()) {
-    val model = object : GalleryViewModel(initialState = FilesystemState(objects = mutableListOf(
-        GalleryObject(FileMetadata("DCIM/", mimeType = MimeType.FOLDER.mediaTypeString), hasSaved = true),
-        GalleryObject(FileMetadata("DSC1111.JPG", mimeType = MimeType.JPEG.mediaTypeString), thumbnail = bitmapFromColor(Color.Red)),
-        GalleryObject(FileMetadata("DSC1234.MOV", mimeType = MimeType.MOV.mediaTypeString), thumbnail = bitmapFromColor(Color.Green)),
-        GalleryObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Cyan)),
-        GalleryObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Magenta)),
-        GalleryObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Yellow, width = 300)),
-        null,
-        null,
-        null,
-        GalleryObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Gray), selected = true),
-        GalleryObject(FileMetadata(), thumbnail = bitmapFromColor(Color.LightGray), selected = true),
-        GalleryObject(FileMetadata(), thumbnail = bitmapFromColor(Color.DarkGray, width = 250)),
-        GalleryObject(FileMetadata("DSC1132.JPG"), thumbnail = bitmapFromColor(Color.Red)),
-        GalleryObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Green)),
-        GalleryObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Blue)),
-        GalleryObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Cyan)),
-    ), sortedList = List(40) { it }, storageName = "Card 2")) {
+    val model = object : GalleryViewModel(currentFilesystem = MutableStateFlow(StorageInfo(objects = mutableListOf(
+            FilesystemObject(FileMetadata("DCIM/", mimeType = MimeType.FOLDER.mediaTypeString), hasSaved = true),
+            FilesystemObject(FileMetadata("DSC1111.JPG", mimeType = MimeType.JPEG.mediaTypeString), thumbnail = bitmapFromColor(Color.Red)),
+            FilesystemObject(FileMetadata("DSC1234.MOV", mimeType = MimeType.MOV.mediaTypeString), thumbnail = bitmapFromColor(Color.Green)),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Cyan)),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Magenta)),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Yellow, width = 300)),
+            FilesystemObject(), FilesystemObject(), FilesystemObject(),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Gray), selected = true),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.LightGray), selected = true),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.DarkGray, width = 250)),
+            FilesystemObject(FileMetadata("DSC1132.JPG"), thumbnail = bitmapFromColor(Color.Red)),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Green)),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Blue)),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Cyan)),
+        ), storageName = "Card 2", objectListSortedOrder = SortBy.NEWEST_FIRST))) {
         override fun fulfillThumbnail(file: GalleryObjectReference) {}
         override fun fulfillMetadata(file: GalleryObjectReference) {}
     }
-    //model.setSelected(true)
     return FudgeTheme {
         Scaffold(
             topBar = {

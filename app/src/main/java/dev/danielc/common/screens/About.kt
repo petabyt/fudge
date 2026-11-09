@@ -1,5 +1,6 @@
 package dev.danielc.common.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,7 +38,6 @@ import dev.danielc.R
 import dev.danielc.common.Runtime
 import dev.danielc.common.ui.theme.FudgeTheme
 import dev.danielc.fudge.BuildInfo
-import androidx.compose.runtime.collectAsState
 
 @Composable
 fun DependencyList() {
@@ -163,6 +163,8 @@ fun AboutScreen(navController: NavHostController = rememberNavController()) {
                         You own your stuff. It shouldn't feel like you're renting it.
                     """.trimIndent(), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(10.dp))
                     HorizontalDivider(Modifier.padding(10.dp))
+
+                    Image(painterResource(R.drawable.image), contentDescription = null)
                 }
             }
         }

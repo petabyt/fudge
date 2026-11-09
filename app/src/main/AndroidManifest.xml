@@ -47,6 +47,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Fudge">
+        <profileable android:shell="true" />
 
         <!--  https://developer.android.com/reference/android/companion/CompanionDeviceService  -->
         <service

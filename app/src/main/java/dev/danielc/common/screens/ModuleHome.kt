@@ -249,7 +249,7 @@ fun ModuleHomeScreen(module: ModuleInstance, hostNavController: NavController) {
                         })
                     }
                     Gallery(Modifier.padding(innerPadding), module.galleryViewModel, onItemClick = { i ->
-                        module.galleryViewModel.goToViewer(FileHandle(i, storageName = module.galleryViewModel.uiState.value.storageName))
+                        module.galleryViewModel.goToViewer(FileHandle(i, storageName = module.galleryViewModel.currentFilesystemStateFlow.value?.storageName))
                     }, showBackupDialog = {
                         module.backupModel.reset()
                         showBackupDialog = true

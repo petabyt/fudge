@@ -20,7 +20,7 @@ apt-get install -y --no-install-recommends \
     build-essential cmake ninja-build esbuild file xxd jq python3 nasm \
     libusb-1.0-0-dev libexif-dev \
     libncurses6 libstdc++6 lib32stdc++6 lib32z1 \
-    locales
+    locales pkg-config libx11-6 libx11-xcb1 
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen
 rm -rf /var/lib/apt/lists/*

@@ -2,6 +2,7 @@ package dev.danielc.fudge
 
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.danielc.common.Runtime
 import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
@@ -31,6 +32,7 @@ class EmulatorCameraTest {
         reader.start()
         try {
             activityRule.scenario.onActivity { startModule("libfuji", "wifi") }
+            // TODO: Wait on Runtime.moduleInstances.size != 0
             val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(120)
             while (true) {
                 val remaining = deadline - System.nanoTime()

@@ -1,6 +1,9 @@
 // Android WiFi interface
 package dev.danielc.libpak;
 
+import static android.os.Looper.getMainLooper;
+import static androidx.core.content.ContextCompat.getSystemService;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -20,19 +23,25 @@ import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
 import android.net.Uri;
 import android.net.wifi.ScanResult;
-import android.net.wifi.WifiConfiguration;
+import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.WifiNetworkSuggestion;
 import android.net.wifi.WifiSsid;
+import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.PatternMatcher;
 import android.provider.Settings;
 import android.util.Log;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiInfo;
 import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
@@ -86,7 +95,7 @@ public class WiFi {
             if (Pak.getActivity().checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED) return false;
         }
         // https://developer.android.com/develop/connectivity/wifi/wifi-permissions
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (Pak.getActivity().checkSelfPermission(Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) return false;
         }
         return true;
@@ -557,5 +566,9 @@ public class WiFi {
         } else {
             ctx.startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
         }
+    }
+
+    public static void startAccessPoint(Activity context, ApFilter filter) {
+        // Look into what PDANet+ does
     }
 }

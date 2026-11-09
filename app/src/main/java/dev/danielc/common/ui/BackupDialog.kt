@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -33,16 +32,14 @@ import dev.danielc.common.BackgroundViewModel
 import dev.danielc.common.MimeType
 import dev.danielc.common.ModuleJob
 import dev.danielc.common.SortBy
+import dev.danielc.common.StorageInfo
 import dev.danielc.common.Timestamp
-import dev.danielc.common.screens.FilesystemState
-import dev.danielc.common.screens.isSelected
 import dev.danielc.fudge.hoursSince
 import dev.danielc.fudge.now
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -60,7 +57,7 @@ data class BackupState(
     val itemsWereSelected: Boolean = false,
 )
 
-open class BackupModel(val fs: StateFlow<FilesystemState> = MutableStateFlow(FilesystemState())): BackgroundViewModel() {
+open class BackupModel(val fs: MutableStateFlow<StorageInfo?>): BackgroundViewModel() {
     private val _state = MutableStateFlow(BackupState())
     val state = _state.asStateFlow()
     private var job: Job? = null
@@ -72,8 +69,13 @@ open class BackupModel(val fs: StateFlow<FilesystemState> = MutableStateFlow(Fil
     open fun fulfillFileMetadata(index: Int) {}
     open fun downloadFile(index: Int, update: (ModuleJob) -> Unit = {}) {}
 
+    fun setFilesystem(fs: StorageInfo, allowSwitch: Boolean = true) {
+        if (!allowSwitch && this.fs.value?.storageName != fs.storageName) return
+        this.fs.value = fs
+    }
+
     fun reset() {
-        val wereSelected = fs.value.objects.filter { it?.selected ?: false }
+        val wereSelected = (fs.value ?: return).objects.filter { it.selected }
         _state.update { BackupState(itemsWereSelected = wereSelected.isNotEmpty(), nToDownload = wereSelected.size) }
     }
     fun updateState(block: (BackupState) -> BackupState) { _state.update { block(it) } }
@@ -108,28 +110,29 @@ open class BackupModel(val fs: StateFlow<FilesystemState> = MutableStateFlow(Fil
         return true
     }
     fun start() {
+        val fs = fs.value ?: return
         job = CoroutineScope(Dispatchers.IO).launch {
             updateState { it.copy(isRunning = true) }
             try {
                 var index = 0
                 while (!(job?.isCancelled ?: false)) {
                     if (!_state.value.itemsWereSelected) {
-                        val filteredTotalValidObjects = if (_state.value.importFromIndex == 0) fs.value.objects.size else {
+                        val filteredTotalValidObjects = if (_state.value.importFromIndex == 0) fs.objects.size else {
                             var nValid = 0
-                            for (obj in fs.value.objects) {
-                                if (passesTimeFilter(obj?.metadata?.createdTimestamp)
-                                    && passesTypeFilter(obj?.metadata?.getMimeType() ?: continue))
+                            for (obj in fs.objects) {
+                                if (passesTimeFilter(obj.metadata?.createdTimestamp)
+                                    && passesTypeFilter(obj.metadata?.getMimeType() ?: continue))
                                     nValid++
                             }
                             nValid
                         }
                         updateState { it.copy(nToDownload = filteredTotalValidObjects) }
                     }
-                    if (index >= fs.value.objects.size) { updateStatus("End of list"); break }
-                    val obj = fs.value.objects[index]
-                    if (obj?.metadata == null) {
+                    if (index >= fs.objects.size) { updateStatus("End of list"); break }
+                    val obj = fs.objects[index]
+                    if (obj.metadata == null) {
                         fulfillFileMetadata(index)
-                        if (fs.value.objects[index]?.metadata == null) index++
+                        if (fs.objects[index].metadata == null) index++
                         continue
                     }
                     if (_state.value.itemsWereSelected) {
@@ -142,8 +145,9 @@ open class BackupModel(val fs: StateFlow<FilesystemState> = MutableStateFlow(Fil
                             moduleJob = if (it.isFinished) null else it
                         }
                         updateState { it.copy(nDownloaded = it.nDownloaded + 1) }
+                        // TODO: Update FilesystemObject.saved to true?
                     } else {
-                        if (!passesTimeFilter(obj.metadata.createdTimestamp) && fs.value.objectListSortedOrder == SortBy.NEWEST_FIRST) {
+                        if (!passesTimeFilter(obj.metadata.createdTimestamp) && fs.objectListSortedOrder == SortBy.NEWEST_FIRST) {
                             updateStatus("End of newest list")
                             break
                         }
@@ -174,7 +178,7 @@ open class BackupModel(val fs: StateFlow<FilesystemState> = MutableStateFlow(Fil
 
 @PreviewPixel9ProDark
 @Composable
-fun BackupDialog(dismiss: () -> Unit = {}, model: BackupModel = BackupModel()) {
+fun BackupDialog(dismiss: () -> Unit = {}, model: BackupModel = BackupModel(MutableStateFlow(null))) {
     val isWorking by remember { mutableStateOf(false) }
     val state by model.state.collectAsStateWithLifecycle()
     LargeCustomAlertDialog(

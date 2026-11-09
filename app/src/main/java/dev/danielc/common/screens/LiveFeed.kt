@@ -59,7 +59,8 @@ open class LiveFeedModel: BackgroundViewModel() {
     fun openFile() {}
     var storageDevice: StorageInfo? = null
     val items = MutableStateFlow<List<LiveFeedItem>>(emptyList())
-    fun update(device: StorageInfo) {
+    fun setStorageDevice(device: StorageInfo, allowSwitch: Boolean = true) {
+        if (!allowSwitch && device.storageName != storageDevice?.storageName) return
         storageDevice = device
     }
     fun setItem(item: LiveFeedItem) {
@@ -126,7 +127,7 @@ fun LiveFeed(modifier: Modifier = Modifier, model: LiveFeedModel) {
 @Composable
 fun PreviewLiveFeed(navController: NavHostController = rememberNavController()) {
     val model = LiveFeedModel()
-    model.update(StorageInfo("downloads", nFiles = 5))
+    model.setStorageDevice(StorageInfo("downloads", nFiles = 5))
     model.setItem(LiveFeedItem(FileHandle(0), FileMetadata("DSC101.JPG"), progress = 100, hasFinished = true))
     model.setItem(LiveFeedItem(FileHandle(1), null, 40))
     

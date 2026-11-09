@@ -1,6 +1,5 @@
 package dev.danielc.common.screens
 
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import dev.danielc.common.FileHandle
@@ -26,10 +25,10 @@ class LocalGalleryViewModel: GalleryViewModel(isRemoteFilesystem = false) {
         try {
             files = FileLayer.getDownloadedMediaFiles()
             reset()
-            setProperties(StorageInfo(
-                name = "Downloads",
+            switchStorageDevice(StorageInfo(
+                storageName = "Downloads",
                 nFiles = files.size,
-                itemsSortedBy = SortBy.NEWEST_FIRST
+                objectListSortedOrder = SortBy.NEWEST_FIRST
             ))
             for (i in files.indices) {
                 updateMetadata(i, files[i].metadata)
@@ -71,7 +70,6 @@ class LocalGalleryViewModel: GalleryViewModel(isRemoteFilesystem = false) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocalGallery(onItemClick: (Int) -> Unit, modifier: Modifier, model: LocalGalleryViewModel?) {
     if (model != null) {

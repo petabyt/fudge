@@ -190,12 +190,12 @@ private fun cameraState(): DashboardModel {
         batteryLevelMain = 48,
         firmwareVersion = "4.31",
     ), storageDevices = MutableStateFlow(listOf(StorageInfo(
-        name = "Card 1",
+        storageName = "Card 1",
         nFiles = 320,
         sizeBytes = 64000000000L,
         usedBytes = 30000000000L
     ), StorageInfo(
-        name = "Card 2",
+        storageName = "Card 2",
         nFiles = 67,
         sizeBytes = 128000000000L,
         usedBytes = 30000000000L
@@ -384,7 +384,7 @@ private fun OverviewPane(state: DashboardState, model: DashboardModel, showSetti
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 state.nameOfDevice?.let { name ->
-                    if (!model.manifest.targets.isEmpty())
+                    if (model.manifest.targets.isNotEmpty())
                         Icon(
                             painter = painterResource(model.manifest.targets[0].deviceId.getIcon()),
                             contentDescription = null
@@ -445,7 +445,7 @@ private fun CardPane(e: StorageInfo, model: DashboardModel) {
         .fillMaxWidth()
         .clip(RoundedCornerShape(12.dp))
         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-        .clickable(onClick = { model.onStorageDeviceClicked(e.name) })
+        .clickable(onClick = { model.onStorageDeviceClicked(e.storageName) })
     ) {
         Column(Modifier.padding(10.dp)) {
             Row(Modifier.padding(5.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -454,7 +454,7 @@ private fun CardPane(e: StorageInfo, model: DashboardModel) {
                 } else {
                     Icon(painterResource(R.drawable.outline_sd_card_24), contentDescription = null)
                 }
-                Text(e.name)
+                Text(e.storageName)
                 Spacer(Modifier.weight(1f))
                 if (e.sizeBytes != null && e.usedBytes != null) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {

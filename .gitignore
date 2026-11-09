@@ -17,6 +17,8 @@ up.sh
 push.sh
 android_test_module
 
+common/build/
+
 ios/**/xcuserdata/
 ios/**/project.xcworkspace/xcuserdata/
 ios/build/

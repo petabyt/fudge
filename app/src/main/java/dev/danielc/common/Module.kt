@@ -38,7 +38,7 @@ import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 
 /**
- * Note that a Kotlin function is for use through JNI/C
+ * To note that a Kotlin function is for use through JNI/C
  */
 annotation class CalledFromNative
 
@@ -57,11 +57,11 @@ data class ModuleJob(
     var isFinished: Boolean = false,
 )
 
-class ModuleBackupModel(val module: ModuleInstance): BackupModel(module.galleryViewModel.uiState) {
+class ModuleBackupModel(val module: ModuleInstance): BackupModel(module.currentFilesystem) {
     override fun cancelJob(job: ModuleJob) { module.cancelJob(job) }
     override fun fulfillFileMetadata(index: Int) { module.galleryViewModel.fulfillMetadata(GalleryObjectReference(index)) }
     override fun downloadFile(index: Int, update: (ModuleJob) -> Unit) {
-        val handle = FileHandle(index, module.galleryViewModel.uiState.value.storageName)
+        val handle = FileHandle(index, module.galleryViewModel.currentFilesystemStateFlow.value?.storageName)
         module.galleryViewModel.updateDownloader(handle)
         val downloader = module.galleryViewModel.downloader
         module.getFileContents(file = handle, onUpdate = {
@@ -130,7 +130,7 @@ class ModuleLiveFeedModel(val module: ModuleInstance): LiveFeedModel() {
     }
 }
 
-class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: ViewerModel): GalleryViewModel() {
+class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: ViewerModel): GalleryViewModel(currentFilesystem = module.currentFilesystem) {
     var downloader: FileDownloader? = null
     var viewerDownloadJob: ModuleJob? = null
     override fun fulfillThumbnail(file: GalleryObjectReference) {
@@ -142,6 +142,14 @@ class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: Vi
     override fun fulfillMetadata(file: GalleryObjectReference) {
         if (module.getFileMetadata(file = FileHandle(file.index, null)) != 0) {
             updateMetadata(file.index, null)
+        }
+    }
+
+    override fun toggleStorageDevice() {
+        for (dev in module.storageDevices.value) {
+            if (dev.storageName != module.currentFilesystem.value?.storageName) {
+                switchStorageDevice(dev)
+            }
         }
     }
 
@@ -177,9 +185,9 @@ class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: Vi
 
     fun goToViewer(file: FileHandle) {
         CoroutineScope(Dispatchers.IO).launch {
-            val galleryState = uiState.value
+            val galleryState = currentFilesystemStateFlow.value
             viewerViewModel.clear()
-            viewerViewModel.update(file, galleryState.objects.size, getThumbnail(file, -1), getThumbnail(file, 0), getThumbnail(file, 1))
+            viewerViewModel.update(file, galleryState?.objects?.size ?: 0, getThumbnail(file, -1), getThumbnail(file, 0), getThumbnail(file, 1))
             viewerViewModel.updateMetadata(getMetadata(file))
 
             fun onCancel() {
@@ -245,7 +253,7 @@ class ModuleDashboardModel(val module: ModuleInstance) : DashboardModel(module.m
         module.userSave()
     }
     override fun onStorageDeviceClicked(name: String) {
-        val dev = module.storageDevices.value.find { it.name == name } ?: return
+        val dev = module.storageDevices.value.find { it.storageName == name } ?: return
         if (dev.isLiveFeedMedium) {
             module.switchScreen(Screen.LIVE_FEED, isInNavBar = true)
         } else {
@@ -336,19 +344,16 @@ abstract class ModuleBase: NativeModule() {
         closeJob(job)
         return rc
     }
-
     fun findConnection(onUpdate: JobUpdateCallback = {}): Int {
         return withJob(onUpdate) { job ->
             onFindConnection(job.id)
         }
     }
-
     fun getFileMetadata(onUpdate: JobUpdateCallback = {}, file: FileHandle): Int {
         return withJob(onUpdate) { job ->
             onRequestFileMetadata(job.id, file)
         }
     }
-
     fun getFileThumbnail(onUpdate: JobUpdateCallback = {}, file: FileHandle): Int {
         return withJob(onUpdate) { job ->
             onRequestFileThumbnail(job.id, file)
@@ -427,7 +432,8 @@ data class ModuleInstanceRequest(
 class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: ModuleInstanceModel): ModuleBase() {
     val manifest = request.getManifest()
     val chosenConnectableDevice = request.getConnectableDevice()
-    val storageDevices = MutableStateFlow(emptyList<StorageInfo>())
+    var storageDevices = MutableStateFlow(emptyList<StorageInfo>())
+    var currentFilesystem: MutableStateFlow<StorageInfo?> = MutableStateFlow(null)
 
     val liveFeedModel = ModuleLiveFeedModel(this)
     val viewerViewModel = ViewerModel()
@@ -510,10 +516,14 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
             privateData = null,
         ))
     }
-    fun getStorageDevice(name: String): StorageInfo? { return storageDevices.value.find { it.name == name } }
+    fun getStorageDevice(name: String?): StorageInfo? {
+        if (currentFilesystem.value != null) return currentFilesystem.value
+        return storageDevices.value.find { it.storageName == name }
+    }
     fun updateStorageDeviceStatus(name: String?, message: String?, percent: Int? = null) {
-        storageDevices.update {
-            it.map { item -> if (item.name == name) item.copy(currentStatus = message ?: item.currentStatus, currentProgress = percent) else item }
+        // Assumes name == currentFilesystem.storageName
+        currentFilesystem.update {
+            it?.copy(currentStatus = message ?: it.currentStatus, currentProgress = percent)
         }
     }
 
@@ -576,7 +586,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
         if (ModuleProperty.fromId(type) == ModuleProperty.NAME_OF_DEVICE) {
             val dir = FileLayer.Directory(subfolder = if (Runtime.appSettings.value.perDeviceSubFolder) value else null)
             viewerViewModel.dir = dir
-            galleryViewModel.dir = dir
+            galleryViewModel.downloadDir = dir
         }
         dashboardModel.setProperty(ModuleProperty.fromId(type) ?: return, value)
     }
@@ -608,7 +618,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
         if (galleryViewModel.viewerDownloadJob?.id == job) {
             viewerViewModel.updateSpeed("${(nBytes * 8) / timeMs}Mbps")
         } else if (liveFeedModel.downloadJob?.id == job) {
-            // TODO: Shoud livefeed have stats?
+            // TODO: Should livefeed have stats?
         }
     }
     @CalledFromNative
@@ -622,8 +632,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
     @CalledFromNative
     fun addFileMetadata(file: FileHandle, v: FileMetadata?) {
         galleryViewModel.updateMetadata(file.index, v)
-
-        val dev = storageDevices.value.find { it.name == file.storageName }
+        val dev = getStorageDevice(file.storageName)
         if (dev != null && dev.isLiveFeedMedium) {
             liveFeedModel.addFileMetadata(file, v)
         }
@@ -638,7 +647,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
     }
     @CalledFromNative
     fun setFileContents(file: FileHandle, data: ByteArray?, offset: Long, totalSize: Long) {
-        val dev = storageDevices.value.find { it.name == file.storageName }
+        val dev = getStorageDevice(file.storageName)
         if (dev != null && dev.isLiveFeedMedium) {
             liveFeedModel.setFileContents(file, data, offset, totalSize)
         }
@@ -650,11 +659,10 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
     }
     @CalledFromNative
     fun setStorageInfo(info: StorageInfo) {
-        if (storageDevices.value.find { it.name == info.name } == null) storageDevices.update { it + info }
-        if (info.isLiveFeedMedium) {
-            liveFeedModel.update(info)
-        } else {
-            galleryViewModel.setProperties(info)
+        if (storageDevices.value.find { it.storageName == info.storageName } == null) storageDevices.update { it + info }
+        if (currentFilesystem.value == null) {
+            galleryViewModel.switchStorageDevice(info)
+            currentFilesystem.value = info
         }
     }
     @CalledFromNative
