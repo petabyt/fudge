@@ -65,7 +65,7 @@ int libusb_get_configuration(libusb_device_handle *dev_handle, int *config) {
 
 libusb_device *pak_libusb_device_from_jobject(JNIEnv *env, jobject dev_o) {
 	(*env)->PushLocalFrame(env, 10);
-	jfieldID id = (*env)->GetFieldID(env, (*env)->FindClass(env, "dev/danielc/common/USB$Device"), "dev", "Landroid/hardware/usb/UsbDevice;");
+	jfieldID id = (*env)->GetFieldID(env, (*env)->FindClass(env, "dev/danielc/fudge/USB$Device"), "dev", "Landroid/hardware/usb/UsbDevice;");
 	jobject usb_dev_o = (*env)->GetObjectField(env, dev_o, id);
 	struct libusb_device *dev = calloc(sizeof(libusb_device), 1);
 	dev->device = (*env)->NewGlobalRef(env, usb_dev_o);
@@ -206,7 +206,7 @@ int libusb_open(libusb_device *dev, libusb_device_handle **dev_handle) {
 
 	jclass man_c = (*env)->FindClass(env, "android/hardware/usb/UsbManager");
 
-	jmethodID req_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/USB$Device"), "requestPermissionToOpen", "()I");
+	jmethodID req_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/USB$Device"), "requestPermissionToOpen", "()I");
 	int rc = (*env)->CallIntMethod(env, dev->wrapper_class_o, req_m);
 	if (rc) {
 		pak_global_log("requestPermissionToOpen timeout");

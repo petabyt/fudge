@@ -9,15 +9,14 @@
 .cxx
 local.properties
 
-app/src/main/assets/*
-!app/src/main/assets/.gitkeep
+app/src/androidMain/assets/*
+!app/src/androidMain/assets/.gitkeep
 app/nightly/*
 app/src/main/res/drawable/background1.jpg
 up.sh
 push.sh
 android_test_module
-
-common/build/
+app/build/
 
 ios/**/xcuserdata/
 ios/**/project.xcworkspace/xcuserdata/

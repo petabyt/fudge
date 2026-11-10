@@ -25,7 +25,7 @@ int pak_wifi_get_n_adapters(struct PakNet *ctx) {
 
 struct PakWiFiAdapter *pak_wifi_adapter_from_jobject(JNIEnv *env, jobject wifi_adapter) {
 	(*env)->PushLocalFrame(env, 10);
-	jclass adapter_c = (*env)->FindClass(env, "dev/danielc/common/WiFi$Adapter");
+	jclass adapter_c = (*env)->FindClass(env, "dev/danielc/fudge/WiFi$Adapter");
 	jobject net_o = (*env)->GetObjectField(env, wifi_adapter, (*env)->GetFieldID(env, adapter_c, "net", "Landroid/net/Network;"));
 	jlong handle = (*env)->GetLongField(env, wifi_adapter, (*env)->GetFieldID(env, adapter_c, "handle", "J"));
 
@@ -39,7 +39,7 @@ struct PakWiFiAdapter *pak_wifi_adapter_from_jobject(JNIEnv *env, jobject wifi_a
 }
 
 jobject pak_wifi_ap_filter_to_jobject(JNIEnv *env, struct PakWiFiApFilter *filter) {
-	jclass filter_c = (*env)->FindClass(env, "dev/danielc/common/WiFi$ApFilter");
+	jclass filter_c = (*env)->FindClass(env, "dev/danielc/fudge/WiFi$ApFilter");
 	jmethodID constructor = (*env)->GetMethodID(env, filter_c, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZ)V");
 	return (*env)->NewObject(env, filter_c, constructor,
 		filter->ssid_pattern ? (*env)->NewStringUTF(env, filter->ssid_pattern) : NULL,
@@ -55,8 +55,8 @@ struct PakWiFiAdapter *pak_wifi_get_adapter(struct PakNet *ctx, int index) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 
-	jclass wifi_c = (*env)->FindClass(env, "dev/danielc/common/WiFi");
-	jobject adapter_o = (*env)->CallStaticObjectMethod(env, wifi_c, (*env)->GetStaticMethodID(env, wifi_c, "getPrimaryAdapter", "()Ldev/danielc/common/WiFi$Adapter;"));
+	jclass wifi_c = (*env)->FindClass(env, "dev/danielc/fudge/WiFi");
+	jobject adapter_o = (*env)->CallStaticObjectMethod(env, wifi_c, (*env)->GetStaticMethodID(env, wifi_c, "getPrimaryAdapter", "()Ldev/danielc/fudge/WiFi$Adapter;"));
 	struct PakWiFiAdapter *adapter = pak_wifi_adapter_from_jobject(env, adapter_o);
 
 	(*env)->PopLocalFrame(env, NULL);
@@ -104,13 +104,13 @@ int pak_wifi_request_connection(struct PakNet *ctx, struct PakWiFiApFilter *spec
 }
 
 JNIEXPORT void JNICALL
-Java_dev_danielc_common_WiFi_00024NativeWiFiDiscoveryCallback_onConnected(JNIEnv *env, jobject thiz,
+Java_dev_danielc_fudge_WiFi_00024NativeWiFiDiscoveryCallback_onConnected(JNIEnv *env, jobject thiz,
 																	jobject net) {
 	// TODO: implement found()
 }
 
 JNIEXPORT void JNICALL
-Java_dev_danielc_common_WiFi_00024NativeWiFiDiscoveryCallback_failed(JNIEnv *env, jobject thiz,
+Java_dev_danielc_fudge_WiFi_00024NativeWiFiDiscoveryCallback_failed(JNIEnv *env, jobject thiz,
 																	 jstring reason, jint code) {
 	// TODO: implement failed()
 }

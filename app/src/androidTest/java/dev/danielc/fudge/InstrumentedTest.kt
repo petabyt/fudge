@@ -1,11 +1,7 @@
 package dev.danielc.fudge
 
-import android.content.Context
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.danielc.common.Bluetooth
-import dev.danielc.common.NativeRuntime
-import dev.danielc.common.WiFi
 
 import org.junit.Assert.assertEquals
 import org.junit.Rule

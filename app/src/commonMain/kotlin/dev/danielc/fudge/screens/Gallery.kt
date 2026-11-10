@@ -1,0 +1,737 @@
+package dev.danielc.fudge.screens
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalRippleConfiguration
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.ripple
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
+import fantasyfudge.app.generated.resources.*
+import dev.danielc.fudge.BackgroundViewModel
+import dev.danielc.fudge.FileHandle
+import dev.danielc.fudge.FileLayer
+import dev.danielc.fudge.FileMetadata
+import dev.danielc.fudge.FilesystemObject
+import dev.danielc.fudge.MimeType
+import dev.danielc.fudge.NativeRuntime
+import dev.danielc.fudge.SortBy
+import dev.danielc.fudge.StorageInfo
+import dev.danielc.fudge.longToFileSize
+import dev.danielc.fudge.ui.theme.FudgeRippleConfig
+import dev.danielc.fudge.ui.theme.FudgeTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
+
+private fun bitmapFromColor(
+    color: Color,
+    width: Int = 512,
+    height: Int = 400
+): ImageBitmap {
+    val imageBitmap = ImageBitmap(width, height)
+    val drawScope = CanvasDrawScope()
+    drawScope.draw(
+        density = Density(1f),
+        layoutDirection = LayoutDirection.Ltr,
+        canvas = Canvas(imageBitmap),
+        size = Size(width.toFloat(), height.toFloat())
+    ) {
+        drawRect(color = color)
+    }
+
+    return imageBitmap
+}
+
+enum class DisplayType {
+    THUMBNAILS,
+    VERTICAL_TABLE,
+}
+
+data class GalleryObjectReference(
+    val index: Int,
+    // TODO: Folder
+)
+
+abstract class GalleryViewModel(
+    val isRemoteFilesystem: Boolean = true,
+    var isThumbnailPriority: Boolean = true,
+    var downloadDir: FileLayer.Directory = FileLayer.Directory(),
+    private val currentFilesystem: MutableStateFlow<StorageInfo?> = MutableStateFlow(null)
+) : BackgroundViewModel() {
+    val currentFilesystemStateFlow = currentFilesystem.asStateFlow()
+
+    /** List of indexes into currentFilesystem.objects */
+    val currentFilesystemSortedList: MutableStateFlow<List<Int>> = MutableStateFlow(emptyList())
+    val userSortBy = MutableStateFlow(SortBy.NEWEST_FIRST)
+    // TODO: Possibly have a queue of fixed length
+    private val queue: ArrayDeque<GalleryObjectReference> = ArrayDeque()
+    private val queueMutex = Mutex()
+
+    init {
+        if (currentFilesystem.value != null) sortObjectList()
+    }
+
+    private var thread: Job? = null
+    private var threadIsPaused: Boolean = true
+
+    override fun onShutdown() {
+        stop()
+    }
+
+    fun getMetadata(file: FileHandle): FileMetadata? {
+        return currentFilesystem.value?.objects?.getOrNull(file.index)?.metadata
+    }
+    fun getThumbnail(file: FileHandle, offset: Int): ImageBitmap? {
+        return currentFilesystem.value?.objects?.getOrNull(file.index + offset)?.thumbnail
+    }
+
+    open fun onRefresh() {}
+    open fun onShare(ref: GalleryObjectReference) {}
+    open fun itemClicked(ref: GalleryObjectReference) {}
+    open fun init() {}
+    open fun toggleStorageDevice() {}
+    abstract suspend fun fulfillThumbnail(file: GalleryObjectReference)
+    abstract suspend fun fulfillMetadata(file: GalleryObjectReference)
+
+    companion object {
+        fun objectIsFulfilled(obj: FilesystemObject?): Boolean {
+            if (obj == null) return false
+            return ((obj.metadata != null || obj.invalidMetadata) && (obj.thumbnail != null || obj.invalidThumbnail))
+        }
+    }
+
+    fun setSortBy(sort: SortBy) {
+        userSortBy.value = sort
+        // Probably a good idea to clear queue here
+        sortObjectList()
+    }
+
+    private fun sortObjectList() {
+        val filesystem = currentFilesystem.value ?: return
+        if (userSortBy.value != filesystem.objectListSortedOrder) {
+            currentFilesystemSortedList.value = List(filesystem.objects.size) { index -> filesystem.objects.size - 1 - index }
+        } else {
+            currentFilesystemSortedList.value = List(filesystem.objects.size) { index -> index }
+        }
+    }
+
+    private suspend fun checkObject(obj: FilesystemObject?, ref: GalleryObjectReference): Boolean {
+        if (obj == null) {
+            if (isThumbnailPriority) {
+                fulfillThumbnail(ref)
+            } else {
+                fulfillMetadata(ref)
+            }
+        } else {
+            obj.lastUpdated = TimeSource.Monotonic.markNow()
+            if (obj.thumbnail == null && !obj.invalidThumbnail) {
+                fulfillThumbnail(ref)
+            } else if (obj.metadata == null && !obj.invalidMetadata) {
+                fulfillMetadata(ref)
+            } else {
+                return false
+            }
+        }
+        return true
+    }
+
+    // Returns true when work was done
+    private suspend fun tick(): Boolean {
+        val storage = currentFilesystem.value ?: return false
+        val objects = storage.objects
+        if (objects.size < storage.nFiles) {
+            currentFilesystem.update {
+                val filled = objects.toMutableList()
+                while (filled.size < storage.nFiles) filled.add(FilesystemObject())
+                it?.copy(objects = filled)
+            }
+        }
+        if (queue.isEmpty()) {
+            // Iterate all recently checked objects fulfill them more (recently seen by user, should be priority)
+            val newest = objects.sortedBy { it.lastUpdated }
+            for (i in newest.indices) {
+                if (checkObject(objects[i], GalleryObjectReference(i))) return true
+            }
+            return false
+        }
+        val ref = queueMutex.withLock {
+            queue.removeLast()
+        }
+        if (ref.index >= objects.size || ref.index < 0) return false
+        val obj = objects[ref.index]
+        return checkObject(obj, ref)
+    }
+
+    fun start() {
+        threadIsPaused = false
+        if (thread == null) {
+            thread = CoroutineScope(Dispatchers.IO).launch {
+                val thread = thread
+                while (thread != null && !thread.isCancelled) {
+                    if (!threadIsPaused) {
+                        if (tick()) continue
+                    }
+                    try {
+                        delay(100.milliseconds)
+                    } catch (_: CancellationException) {
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    fun setPaused(v: Boolean) {
+        threadIsPaused = v
+    }
+
+    fun stop() {
+        setPaused(true)
+        thread?.cancel()
+        thread = null
+    }
+
+    fun reset() {
+        CoroutineScope(Dispatchers.IO).launch {
+            currentFilesystem.update {
+                it?.copy(objects = mutableListOf())
+            }
+        }
+    }
+
+    fun switchStorageDevice(info: StorageInfo) {
+        CoroutineScope(Dispatchers.IO).launch {
+            queueMutex.withLock {
+                queue.clear()
+                currentFilesystem.update {
+                    info
+                }
+                sortObjectList()
+            }
+        }
+    }
+
+    private fun updateObject(i: Int, block: (FilesystemObject) -> FilesystemObject) {
+        CoroutineScope(Dispatchers.IO).launch {
+            currentFilesystem.update {
+                if (it == null) it else {
+                    val list = it.objects.toMutableList()
+                    while (list.size <= i) list.add(FilesystemObject())
+                    val obj = list[i]
+                    list[i] = block(obj)
+                    it.copy(objects = list)
+                }
+            }
+            sortObjectList()
+        }
+    }
+
+    fun updateThumbnail(i: Int, thumbData: ByteArray? = null) {
+        updateThumbnail(i, if (thumbData != null) NativeRuntime.decodeImageContents(thumbData, null) else null)
+    }
+    fun setHasSaved(i: Int, v: Boolean) {
+        updateObject(i) { it.copy(hasSaved = v) }
+    }
+    fun toggleIsSelected(i: Int) {
+        updateObject(i) { obj ->
+            CoroutineScope(Dispatchers.IO).launch {
+                currentFilesystem.update { it?.copy(nSelectedObjects = if (obj.selected) it.nSelectedObjects - 1 else it.nSelectedObjects + 1) }
+            }
+            obj.copy(selected = !obj.selected)
+        }
+    }
+    fun setSelected(all: Boolean) {
+        CoroutineScope(Dispatchers.IO).launch {
+            currentFilesystem.update { currentState ->
+                currentState?.copy(
+                    objects = currentState.objects.map { it.copy(selected = all) }.toMutableList()
+                ) ?: currentState
+            }
+            if (!all) currentFilesystem.value?.nSelectedObjects = 0
+            sortObjectList()
+        }
+    }
+    fun updateMetadata(i: Int, md: FileMetadata? = null) {
+        updateObject(i) { obj ->
+            if (md == null) {
+                obj.copy(metadata = null, invalidMetadata = true)
+            } else {
+                val filename = md.filename
+                val saved = if (filename != null && isRemoteFilesystem) FileLayer.doesFileExist(filename) else false
+                obj.copy(metadata = md, hasSaved = saved)
+            }
+        }
+    }
+    fun updateThumbnail(i: Int, thumb: ImageBitmap? = null) {
+        updateObject(i) { obj ->
+            if (thumb == null) {
+                obj.copy(
+                    thumbnail = null,
+                    invalidThumbnail = true,
+                )
+            } else {
+                obj.copy(thumbnail = thumb)
+            }
+        }
+    }
+    fun enqueueObjects(indexes: List<Int>) {
+        CoroutineScope(Dispatchers.IO).launch {
+            queueMutex.withLock {
+                for (i in indexes) {
+                    // Remove existing entries so they can be re-added to the top of the stack
+                    queue.removeAll { it.index == i }
+                    val newIndex = currentFilesystemSortedList.value.getOrNull(i)
+                    if (newIndex != null) {
+                        queue.addLast(GalleryObjectReference(newIndex))
+                    }
+                }
+            }
+        }
+    }
+    override fun onTrimMemory() {
+        val nObjectsToFree = 10
+        if ((currentFilesystem.value ?: return).objects.isEmpty()) return
+        CoroutineScope(Dispatchers.IO).launch {
+            currentFilesystem.update { currentState ->
+                if (currentState == null) currentState else {
+                    // Sort objects by oldest and deref the thumbnail
+                    val list = currentState.objects.toMutableList()
+                    val oldest = currentState.objects.sortedByDescending { it.lastUpdated }
+                    var nFreed = 0
+                    for (e in oldest) {
+                        if (e.thumbnail == null) {
+                            val index = list.indexOf(e)
+                            list[index] = list[index].copy(thumbnail = null)
+                            nFreed++
+                        }
+                        if (nFreed >= nObjectsToFree) break else nFreed++
+                    }
+                    currentState.copy(objects = list)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GalleryThumbnail(obj: FilesystemObject, onClick: () -> Unit = {}, longClick: () -> Unit = {}, scale: Float = 1f) {
+    val boxModifier = Modifier
+        .aspectRatio(1f)
+        .background(MaterialTheme.colorScheme.surfaceContainer)
+    Box(
+        boxModifier
+            .combinedClickable(
+                onClick = {
+                    onClick()
+                },
+                onLongClick = {
+                    longClick()
+                }
+            )
+            .graphicsLayer(clip = true)
+            .then(if (obj.selected) Modifier.border(4.dp, Color.Gray) else Modifier)
+    ) {
+        val icon = MimeType.getIcon(obj.metadata?.getMimeType())
+        if (obj.thumbnail != null) {
+            Image(modifier = Modifier
+                .fillMaxSize()
+                .then(if (obj.selected) Modifier.padding(4.dp) else Modifier)
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale,
+                ), bitmap = obj.thumbnail, contentDescription = null, contentScale = ContentScale.Crop)
+        }
+        if (obj.thumbnail == null || obj.metadata?.getMimeType()?.isVideo() ?: false) {
+            Icon(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(45.dp),
+                painter = painterResource(icon),
+                contentDescription = null,
+            )
+        }
+        val filename = obj.metadata?.filename
+        if (filename != null) {
+            Text(filename, modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .background(Color.Black.copy(alpha = 0.4f))
+                .padding(horizontal = 4.dp),
+                lineHeight = TextUnit(10f, TextUnitType.Sp),
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+        if (obj.hasSaved) {
+            Icon(
+                painterResource(Res.drawable.outline_download_done_24),
+                contentDescription = null,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(15.dp)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
+                    .padding(2.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun GalleryFile(obj: FilesystemObject, onClick: () -> Unit = {}) {
+    CompositionLocalProvider(LocalRippleConfiguration provides FudgeRippleConfig(Color.White)) {
+        Box(
+            Modifier
+                .combinedClickable(
+                    onClick = {
+                        onClick()
+                    },
+                    onLongClick = {}
+                )
+                .indication(
+                    indication = ripple(),
+                    interactionSource = remember { MutableInteractionSource() }
+                )
+                .padding(2.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+        ) {
+            Row(Modifier.padding(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                val icon = MimeType.getIcon(obj.metadata?.getMimeType())
+                Icon(
+                    tint = MaterialTheme.colorScheme.primary,
+                    painter = painterResource(icon),
+                    contentDescription = null,
+                )
+                if (obj.metadata?.filename != null) {
+                    Text(obj.metadata.filename!!, modifier = Modifier.weight(1f))
+                }
+                if (obj.metadata?.filesize != null) {
+                    Text(longToFileSize(obj.metadata.filesize.toLong()))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick: (Int) -> Unit = {}, showBackupDialog: () -> Unit = {}) {
+    val state by model.currentFilesystemStateFlow.collectAsStateWithLifecycle()
+    val haptic = LocalHapticFeedback.current
+    var isRefreshing by remember { mutableStateOf(false) }
+    var showDeselect by remember { mutableStateOf(false) }
+    var displayType by rememberSaveable { mutableStateOf(DisplayType.THUMBNAILS) }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
+    var rows by rememberSaveable { mutableIntStateOf(4) }
+    val userSortBy by model.userSortBy.collectAsStateWithLifecycle()
+
+    @Composable
+    fun menu() {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(2.dp),
+        ) {
+           state?.let {
+                Box(Modifier
+                    .padding(4.dp)
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp))
+                    .clickable(onClick = {
+                        model.toggleStorageDevice()
+                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    })
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(6.dp)) {
+                        Text(it.storageName, color = MaterialTheme.colorScheme.onPrimary)
+                        Icon(painterResource(Res.drawable.outline_arrow_drop_down_24), contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
+            }
+            Spacer(Modifier.weight(0.5f))
+            if (model.isRemoteFilesystem) {
+                IconButton(onClick = {
+                    showBackupDialog()
+                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                }, modifier = Modifier) {
+                    Icon(
+                        modifier = Modifier.size(27.dp),
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        painter = painterResource(Res.drawable.outline_archive_24),
+                        contentDescription = null
+                    )
+                }
+            }
+            IconButton(onClick = {
+                model.setSelected(!showDeselect)
+                showDeselect = !showDeselect
+                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+            }, modifier = Modifier) {
+                Icon(
+                    modifier = Modifier.size(27.dp),
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    painter = if (showDeselect) painterResource(Res.drawable.outline_deselect_24) else painterResource(Res.drawable.outline_select_all_24),
+                    contentDescription = null
+                )
+            }
+            IconButton(onClick = {
+                displayType = if (displayType == DisplayType.THUMBNAILS) DisplayType.VERTICAL_TABLE else DisplayType.THUMBNAILS
+                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+            }, modifier = Modifier) {
+                Icon(
+                    modifier = Modifier.size(27.dp),
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    painter = if (displayType == DisplayType.THUMBNAILS) painterResource(Res.drawable.baseline_view_list_24) else painterResource(Res.drawable.baseline_grid_view_24),
+                    contentDescription = null
+                )
+            }
+            IconButton(onClick = {
+                model.setSortBy(if (userSortBy == SortBy.NEWEST_FIRST) SortBy.OLDEST_FIRST else SortBy.NEWEST_FIRST)
+                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+            }, modifier = Modifier) {
+                Icon(
+                    modifier = Modifier.size(27.dp),
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    painter = painterResource(Res.drawable.outline_sort_24),
+                    contentDescription = null
+                )
+            }
+        }
+    }
+
+    // Scale thumbnails on zoom gesture
+    var scale by remember { mutableFloatStateOf(1f) }
+    var isZooming by remember { mutableStateOf(false) }
+    val gesture = Modifier.pointerInput(Unit) {
+        awaitEachGesture {
+            awaitFirstDown(pass = PointerEventPass.Initial)
+            do {
+                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                if (event.changes.count { it.pressed } == 2) {
+                    isZooming = true
+                    scale = (scale * event.calculateZoom()).coerceIn(0f, 2f)
+                    event.changes.forEach { it.consume() }
+                } else if (isZooming) {
+                    event.changes.forEach { it.consume() }
+                }
+            } while (event.changes.any { it.pressed })
+            if (isZooming) {
+                if (scale > 1f) {
+                    if (rows > 1) rows--
+                } else {
+                    rows++
+                }
+                scale = 1f
+                isZooming = false
+            }
+        }
+    }
+
+    Box(modifier = modifier
+        .fillMaxSize()
+        .then(gesture)) {
+        val listState = rememberLazyGridState()
+        PullToRefreshBox(
+            state = rememberPullToRefreshState(),
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                if (!isZooming) {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        isRefreshing = true
+                        model.onRefresh()
+                        refreshTrigger++
+                        isRefreshing = false
+                    }
+                }
+            },
+        ) {
+            println(state?.nSelectedObjects)
+            val rows = if (displayType == DisplayType.THUMBNAILS) rows else 1
+            LazyVerticalGrid(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                columns = GridCells.Fixed(rows)
+            ) {
+                item(span = { GridItemSpan(rows) }) {
+                    menu()
+                }
+
+                if (state?.objects?.isNotEmpty() ?: false) {
+                    itemsIndexed(model.currentFilesystemSortedList.value) { _, entry ->
+                        val obj = state?.objects?.getOrNull(entry)
+                        if (obj == null) {}
+                        else if (displayType == DisplayType.THUMBNAILS) {
+                            GalleryThumbnail(obj, onClick = {
+                                if (obj.selected) {
+                                    model.toggleIsSelected(entry)
+                                    haptic.performHapticFeedback(HapticFeedbackType.ToggleOff)
+                                } else if (state?.nSelectedObjects != 0) {
+                                    model.toggleIsSelected(entry)
+                                    haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                                } else {
+                                    onItemClick(entry)
+                                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                }
+                            }, longClick = {
+                                model.toggleIsSelected(entry)
+                                haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                            }, scale = scale)
+                        } else {
+                            GalleryFile(obj, onClick = {
+                                onItemClick(entry)
+                                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                            })
+                        }
+                    }
+                } else {
+                    item(span = { GridItemSpan(rows) }) {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(stringResource(Res.string.no_files_are_present))
+                        }
+                    }
+                }
+            }
+
+            // Monitor recently viewed items so they can be sent to the queue
+            LaunchedEffect(listState) {
+                snapshotFlow { listState.layoutInfo.visibleItemsInfo.map { it.index } }
+                    .distinctUntilChanged()
+                    .collect { visibleItems ->
+                        model.enqueueObjects(visibleItems)
+                    }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, device = "id:pixel_7", uiMode = 32)
+@Composable
+fun PreviewGalleryScreen(navController: NavHostController = rememberNavController()) {
+    val model = object : GalleryViewModel(currentFilesystem = MutableStateFlow(StorageInfo(objects = mutableListOf(
+            FilesystemObject(FileMetadata("DCIM/", mimeType = MimeType.FOLDER.mediaTypeString), hasSaved = true),
+            FilesystemObject(FileMetadata("DSC1111.JPG", mimeType = MimeType.JPEG.mediaTypeString), thumbnail = bitmapFromColor(Color.Red)),
+            FilesystemObject(FileMetadata("DSC1234.MOV", mimeType = MimeType.MOV.mediaTypeString), thumbnail = bitmapFromColor(Color.Green)),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Cyan)),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Magenta)),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Yellow, width = 300)),
+            FilesystemObject(), FilesystemObject(), FilesystemObject(),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Gray), selected = true),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.LightGray), selected = true),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.DarkGray, width = 250)),
+            FilesystemObject(FileMetadata("DSC1132.JPG"), thumbnail = bitmapFromColor(Color.Red)),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Green)),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Blue)),
+            FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Cyan)),
+        ), storageName = "Card 2", objectListSortedOrder = SortBy.NEWEST_FIRST))) {
+        override suspend fun fulfillThumbnail(file: GalleryObjectReference) {}
+        override suspend fun fulfillMetadata(file: GalleryObjectReference) {}
+    }
+    return FudgeTheme {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(),
+                    title = {
+                        Text("Gallery")
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            navController.navigateUp()
+                        }) {
+                            Icon(painterResource(Res.drawable.outline_arrow_back_24), contentDescription = null)
+                        }
+                    },
+                )
+            },
+        ) { innerPadding ->
+            Gallery(Modifier.padding(innerPadding), model)
+        }
+    }
+}

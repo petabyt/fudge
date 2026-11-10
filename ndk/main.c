@@ -12,7 +12,7 @@
 #include "thread.h"
 #include "main.h"
 
-JNIEXPORT void JNICALL Java_dev_danielc_common_NativeRuntime_init(JNIEnv *env, jclass clazz) {
+JNIEXPORT void JNICALL Java_dev_danielc_fudge_NativeRuntime_init(JNIEnv *env, jclass clazz) {
 	set_jni_env_ctx(env, clazz);
 	pak_global_log("AndroidRuntime init");
 }
@@ -28,7 +28,7 @@ void pak_global_log(const char *fmt, ...) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	jstring buffer_s = (*env)->NewStringUTF(env, buffer);
-	jclass backend_c = (*env)->FindClass(env, "dev/danielc/common/NativeRuntime");
+	jclass backend_c = (*env)->FindClass(env, "dev/danielc/fudge/NativeRuntime");
 	jmethodID log_global_m = (*env)->GetStaticMethodID(env, backend_c, "logGlobalLine", "(Ljava/lang/String;)V");
 	(*env)->CallStaticVoidMethod(env, backend_c, log_global_m, buffer_s);
 	(*env)->PopLocalFrame(env, NULL);
@@ -37,7 +37,7 @@ void pak_global_log(const char *fmt, ...) {
 int pak_rt_set_tick_interval(struct PakModule *mod, unsigned int us) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
 	jmethodID method = (*env)->GetMethodID(env, module_c, "setTickRate", "(I)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, method, (int)us);
 	(*env)->PopLocalFrame(env, NULL);
@@ -93,7 +93,7 @@ void pak_debug_log(struct PakModule *mod, const char *fmt, ...) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	jstring buffer_s = (*env)->NewStringUTF(env, buffer);
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
 	jmethodID debug_log_m = (*env)->GetMethodID(env, module_c, "debugLog", "(Ljava/lang/String;)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, debug_log_m, buffer_s);
 	(*env)->PopLocalFrame(env, NULL);
@@ -111,7 +111,7 @@ void pak_rt_fatal_error(struct PakModule *mod, const char *fmt, ...) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	jstring buffer_s = (*env)->NewStringUTF(env, buffer);
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
 	jmethodID debug_log_m = (*env)->GetMethodID(env, module_c, "forceDisconnect", "(Ljava/lang/String;I)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, debug_log_m, buffer_s, 0);
 	(*env)->PopLocalFrame(env, NULL);
@@ -141,7 +141,7 @@ void pak_abort(const char *fmt, ...) {
 static jobject create_filehandle(JNIEnv *env, const struct PakFileHandle *file) {
 	if (file == NULL) return NULL;
 	(*env)->PushLocalFrame(env, 10);
-	jclass filehandle_c = (*env)->FindClass(env, "dev/danielc/common/FileHandle");
+	jclass filehandle_c = (*env)->FindClass(env, "dev/danielc/fudge/FileHandle");
 	jmethodID constructor = (*env)->GetMethodID(env, filehandle_c, "<init>", "(ILjava/lang/String;Ljava/lang/String;)V");
 	jobject handle_o = (*env)->NewObject(env, filehandle_c, constructor,
 		file->index_in_view,
@@ -154,7 +154,7 @@ static jobject create_filehandle(JNIEnv *env, const struct PakFileHandle *file) 
 static jobject create_filemetadata(JNIEnv *env, const struct PakFileMetadata *meta) {
 	if (meta == NULL) return NULL;
 	(*env)->PushLocalFrame(env, 10);
-	jclass metadata_c = (*env)->FindClass(env, "dev/danielc/common/FileMetadata");
+	jclass metadata_c = (*env)->FindClass(env, "dev/danielc/fudge/FileMetadata");
 	jmethodID constructor = (*env)->GetMethodID(env, metadata_c, "<init>", "(Ljava/lang/String;Ljava/lang/String;IIILjava/lang/String;Ljava/lang/String;I)V");
 	jobject handle_o = (*env)->NewObject(env, metadata_c, constructor,
 		(*env)->NewStringUTF(env, meta->filename),
@@ -174,7 +174,7 @@ const char *pak_rt_get_client_name(void) {
 	static const char *cstr = NULL;
 	if (cstr == NULL) {
 		(*env)->PushLocalFrame(env, 10);
-		jclass module_c = (*env)->FindClass(env, "dev/danielc/common/NativeRuntime");
+		jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/NativeRuntime");
 		jmethodID is_job_cancelled = (*env)->GetStaticMethodID(env, module_c, "getDeviceFriendlyName", "()Ljava/lang/String;");
 		jstring s = (*env)->CallStaticObjectMethod(env, module_c, is_job_cancelled);
 		const char *utfstr = (*env)->GetStringUTFChars(env, s, NULL);
@@ -187,7 +187,7 @@ const char *pak_rt_get_client_name(void) {
 
 int pak_rt_set_screen_supported(struct PakModule *mod, int screen, int v) {
 	JNIEnv *env = get_jni_env();
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
 	jmethodID set_screen_supported = (*env)->GetMethodID(env, module_c, "setScreenSupported", "(IZ)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, set_screen_supported, screen, (jboolean)v);
 	return 0;
@@ -195,7 +195,7 @@ int pak_rt_set_screen_supported(struct PakModule *mod, int screen, int v) {
 
 int pak_rt_is_job_cancelled(struct PakModule *mod, int job) {
 	JNIEnv *env = get_jni_env();
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
 	jmethodID is_job_cancelled = (*env)->GetMethodID(env, module_c, "isJobCancelled", "(I)Z");
 	return (*env)->CallBooleanMethod(env, mod->rt->obj, is_job_cancelled, job);
 }
@@ -213,7 +213,7 @@ int pak_rt_set_progress_bar(struct PakModule *mod, int job, int percent) {
 	if (ratelimit(mod)) return 0;
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
 	jmethodID set_progress_bar = (*env)->GetMethodID(env, module_c, "setProgressBar", "(II)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, set_progress_bar, job, percent);
 	(*env)->PopLocalFrame(env, NULL);
@@ -224,7 +224,7 @@ int pak_rt_set_download_stats(struct PakModule *mod, int job, long time, unsigne
 	if (ratelimit(mod)) return 0;
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
 	jmethodID set_progress_bar = (*env)->GetMethodID(env, module_c, "setDownloadStats", "(IJI)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, set_progress_bar, job, (jlong)time, (jint)n_bytes);
 	(*env)->PopLocalFrame(env, NULL);
@@ -235,7 +235,7 @@ int pak_rt_set_storage_info(struct PakModule *mod, const char *name, struct PakS
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 
-	jclass info_c = (*env)->FindClass(env, "dev/danielc/common/StorageInfo");
+	jclass info_c = (*env)->FindClass(env, "dev/danielc/fudge/StorageInfo");
 	jmethodID constructor = (*env)->GetMethodID(env, info_c, "<init>", "(Ljava/lang/String;IIJJZ)V");
 	jobject handle_o = (*env)->NewObject(env, info_c, constructor,
 		(*env)->NewStringUTF(env, name),
@@ -246,8 +246,8 @@ int pak_rt_set_storage_info(struct PakModule *mod, const char *name, struct PakS
 		(jboolean)info->is_live
 	);
 
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
-	jmethodID set_storage_info = (*env)->GetMethodID(env, module_c, "setStorageInfo", "(Ldev/danielc/common/StorageInfo;)V");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
+	jmethodID set_storage_info = (*env)->GetMethodID(env, module_c, "setStorageInfo", "(Ldev/danielc/fudge/StorageInfo;)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, set_storage_info, handle_o);
 	(*env)->PopLocalFrame(env, NULL);
 	return 0;
@@ -261,8 +261,8 @@ int pak_rt_add_file_contents(struct PakModule *mod, struct PakFileHandle *file, 
 
 	(*env)->PushLocalFrame(env, 10);
 	jobject handle_o = create_filehandle(env, file);
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
-	jmethodID set_storage_info = (*env)->GetMethodID(env, module_c, "setFileContents", "(Ldev/danielc/common/FileHandle;[BJJ)V");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
+	jmethodID set_storage_info = (*env)->GetMethodID(env, module_c, "setFileContents", "(Ldev/danielc/fudge/FileHandle;[BJJ)V");
 
 	jbyteArray image_data_o = (image_data == NULL || length == 0) ? NULL : (*env)->NewByteArray(env, (jsize)length);
 	if (image_data_o != NULL) (*env)->SetByteArrayRegion(env, image_data_o, 0, (jsize)length, (const jbyte *)image_data);
@@ -276,8 +276,8 @@ int pak_rt_add_file_thumbnail(struct PakModule *mod, struct PakFileHandle *file,
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	jobject handle_o = create_filehandle(env, file);
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
-	jmethodID set_storage_info = (*env)->GetMethodID(env, module_c, "addFileThumbnail", "(Ldev/danielc/common/FileHandle;[B)V");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
+	jmethodID set_storage_info = (*env)->GetMethodID(env, module_c, "addFileThumbnail", "(Ldev/danielc/fudge/FileHandle;[B)V");
 
 	jbyteArray image_data_o = image_data == NULL ? NULL : (*env)->NewByteArray(env, (jsize)length);
 	if (image_data_o != NULL) (*env)->SetByteArrayRegion(env, image_data_o, 0, (jsize)length, (const jbyte *)image_data);
@@ -290,7 +290,7 @@ int pak_rt_add_file_thumbnail(struct PakModule *mod, struct PakFileHandle *file,
 int pak_rt_set_session_property(struct PakModule *mod, const char *key, const char *value) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
 	jmethodID set_screen_supported = (*env)->GetMethodID(env, module_c, "setProperty", "(Ljava/lang/String;Ljava/lang/String;)V");
 	jstring key_s = (*env)->NewStringUTF(env, key);
 	jstring value_s = (*env)->NewStringUTF(env, value);
@@ -306,7 +306,7 @@ int pak_rt_set_session_property(struct PakModule *mod, const char *key, const ch
 int pak_rt_set_session_property_int(struct PakModule *mod, const char *key, int value) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
 	jmethodID set_screen_supported = (*env)->GetMethodID(env, module_c, "setProperty", "(Ljava/lang/String;I)V");
 	jstring key_s = (*env)->NewStringUTF(env, key);
 	(*env)->CallVoidMethod(env, mod->rt->obj, set_screen_supported, key_s, value);
@@ -317,7 +317,7 @@ int pak_rt_set_session_property_int(struct PakModule *mod, const char *key, int 
 int pak_rt_set_widget(struct PakModule *mod, const char *name, const struct PakWidget *s) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	jclass properties_c = (*env)->FindClass(env, "dev/danielc/common/Widget$Properties");
+	jclass properties_c = (*env)->FindClass(env, "dev/danielc/fudge/Widget$Properties");
 	jstring name_s = (*env)->NewStringUTF(env, name);
 	jstring title_s = (*env)->NewStringUTF(env, s->title);
 	jobject properties_o = (*env)->NewObject(env, properties_c, (*env)->GetMethodID(env, properties_c, "<init>", "(Ljava/lang/String;Ljava/lang/String;IZ)V"),
@@ -329,18 +329,18 @@ int pak_rt_set_widget(struct PakModule *mod, const char *name, const struct PakW
 
 	jobject pane_o = NULL;
 	if (s->type == PAK_BOOLEAN) {
-		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/common/Widget$BooleanSetting");
-		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/common/Widget$Properties;Z)V"), properties_o, (jboolean)s->u.boolv.v);
+		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/fudge/Widget$BooleanSetting");
+		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/fudge/Widget$Properties;Z)V"), properties_o, (jboolean)s->u.boolv.v);
 	} else if (s->type == PAK_BUTTON) {
-		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/common/Widget$Button");
-		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/common/Widget$Properties;)V"), properties_o);
+		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/fudge/Widget$Button");
+		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/fudge/Widget$Properties;)V"), properties_o);
 	} else if (s->type == PAK_GRAPH) {
-		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/common/Widget$Graph");
+		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/fudge/Widget$Graph");
 		jintArray arr = (*env)->NewIntArray(env, (jsize)s->u.graphv.n_points);
 		(*env)->SetIntArrayRegion(env, arr, 0, (jsize)s->u.graphv.n_points, (const jint *)s->u.graphv.points);
-		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/common/Widget$Properties;[I)V"), properties_o, arr);
+		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/fudge/Widget$Properties;[I)V"), properties_o, arr);
 	} else if (s->type == PAK_COMBOBOX) {
-		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/common/Widget$ComboboxSetting");
+		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/fudge/Widget$ComboboxSetting");
 
 		int n;
 		for (n = 0; s->u.comboboxv.list[n] != NULL; n++);
@@ -349,14 +349,14 @@ int pak_rt_set_widget(struct PakModule *mod, const char *name, const struct PakW
 		for (int i = 0; i < n; i++) {
 			(*env)->SetObjectArrayElement(env, arr, i, (*env)->NewStringUTF(env, s->u.comboboxv.list[i]));
 		}
-		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/common/Widget$Properties;I[Ljava/lang/String;)V"), properties_o,
+		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/fudge/Widget$Properties;I[Ljava/lang/String;)V"), properties_o,
 			(jint)s->u.comboboxv.index_value,
 			arr
 		);
 	}
 	if (pane_o != NULL) {
-		jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
-		jmethodID add_setting = (*env)->GetMethodID(env, module_c, "setDashboardPane", "(Ldev/danielc/common/Widget;)V");
+		jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
+		jmethodID add_setting = (*env)->GetMethodID(env, module_c, "setDashboardPane", "(Ldev/danielc/fudge/Widget;)V");
 		(*env)->CallVoidMethod(env, mod->rt->obj, add_setting, pane_o);
 	}
 
@@ -371,8 +371,8 @@ int pak_rt_add_file_metadata(struct PakModule *mod, struct PakFileHandle *file, 
 	jobject handle_o = create_filehandle(env, file);
 	jobject metadata_o = create_filemetadata(env, metadata);
 
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
-	jmethodID method = (*env)->GetMethodID(env, module_c, "addFileMetadata", "(Ldev/danielc/common/FileHandle;Ldev/danielc/common/FileMetadata;)V");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
+	jmethodID method = (*env)->GetMethodID(env, module_c, "addFileMetadata", "(Ldev/danielc/fudge/FileHandle;Ldev/danielc/fudge/FileMetadata;)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, method, handle_o, metadata_o);
 
 	(*env)->PopLocalFrame(env, NULL);
@@ -389,15 +389,15 @@ int pak_rt_save_session_signature(struct PakModule *mod, struct PakSavedConnecti
 		(*env)->SetByteArrayRegion(env, data, 0, (jsize)info->aux_data_length, (const jbyte *)info->aux_data);
 	}
 
-	jclass saveddeviceinfo_c = (*env)->FindClass(env, "dev/danielc/common/SavedDeviceInfo");
+	jclass saveddeviceinfo_c = (*env)->FindClass(env, "dev/danielc/fudge/SavedDeviceInfo");
 	jobject obj = (*env)->NewObject(env, saveddeviceinfo_c, (*env)->GetMethodID(env, saveddeviceinfo_c, "<init>", "(Ljava/lang/String;Ljava/lang/String;[B)V"),
 		(*env)->NewStringUTF(env, info->unique_id),
 		(*env)->NewStringUTF(env, info->name),
 		data
 	);
 
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
-	jmethodID method = (*env)->GetMethodID(env, module_c, "saveDeviceSignature", "(Ldev/danielc/common/SavedDeviceInfo;)V");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
+	jmethodID method = (*env)->GetMethodID(env, module_c, "saveDeviceSignature", "(Ldev/danielc/fudge/SavedDeviceInfo;)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, method, obj);
 
 	(*env)->PopLocalFrame(env, NULL);
@@ -423,8 +423,8 @@ struct PakFileMetadata *pak_rt_get_metadata(struct PakModule *mod, struct PakFil
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	jobject handle_o = create_filehandle(env, file);
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
-	jmethodID method = (*env)->GetMethodID(env, module_c, "getMetadata", "(Ldev/danielc/common/FileHandle;)Ldev/danielc/common/FileMetadata;");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
+	jmethodID method = (*env)->GetMethodID(env, module_c, "getMetadata", "(Ldev/danielc/fudge/FileHandle;)Ldev/danielc/fudge/FileMetadata;");
 	jobject md_o = (*env)->CallObjectMethod(env, mod->rt->obj, method, handle_o);
 	if (md_o == NULL) {
 		(*env)->PushLocalFrame(env, 10);
@@ -433,7 +433,7 @@ struct PakFileMetadata *pak_rt_get_metadata(struct PakModule *mod, struct PakFil
 
 	struct PakFileMetadata *md = malloc(sizeof(struct PakFileMetadata));
 
-	jclass md_c = (*env)->FindClass(env, "dev/danielc/common/FileMetadata");
+	jclass md_c = (*env)->FindClass(env, "dev/danielc/fudge/FileMetadata");
 	jobject filename_o = (*env)->GetObjectField(env, md_o, (*env)->GetFieldID(env, md_c, "filename", "Ljava/lang/String;"));
 	md->filename = strdup_jstring(env, filename_o);
 	md->file_size = (*env)->GetIntField(env, md_o, (*env)->GetFieldID(env, md_c, "filesize", "I"));
@@ -453,8 +453,8 @@ int pak_rt_add_wifi_connection(struct PakModule *mod, struct PakWiFiApFilter *fi
 
 	jobject filter_o = pak_wifi_ap_filter_to_jobject(env, filter);
 
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
-	jmethodID method = (*env)->GetMethodID(env, module_c, "addWiFiConnection", "(Ldev/danielc/common/WiFi$ApFilter;Ljava/lang/String;Z)V");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
+	jmethodID method = (*env)->GetMethodID(env, module_c, "addWiFiConnection", "(Ldev/danielc/fudge/WiFi$ApFilter;Ljava/lang/String;Z)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, method, filter_o,
 		(*env)->NewStringUTF(env, setup_option), true
 	);
@@ -467,7 +467,7 @@ int pak_rt_add_user_instruction(struct PakModule *mod, const char *message) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 
-	jclass module_c = (*env)->FindClass(env, "dev/danielc/common/ModuleInstance");
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
 	jmethodID method = (*env)->GetMethodID(env, module_c, "setUserInstruction", "(Ljava/lang/String;)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, method, (*env)->NewStringUTF(env, message));
 

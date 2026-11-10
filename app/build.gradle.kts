@@ -1,17 +1,99 @@
-import java.util.Properties
 import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.kotlin.serialization)
+    id("org.jetbrains.kotlin.multiplatform")
+    id("com.android.application")
     id("com.google.devtools.ksp")
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.androidx.room)
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
+tasks.register<Exec>("compileModules") {
+    group = "verification"
+    description = "Compiles and copies modules"
+    doNotTrackState("Always run this script during compilation")
+    commandLine("bash", "-c", "cd ../modules && make OUT_DIR=../app/src/androidMain/assets install_fudge")
+}
+tasks.register<Exec>("compileLibs") {
+    group = "verification"
+    description = "Compiles typescript libraries"
+    doNotTrackState("Always run this script during compilation")
+    commandLine("bash", "-c", "cd ../libpak/typescript && make")
+}
+tasks.named("preBuild") {
+    dependsOn("compileModules", "compileLibs")
+}
+
+kotlin {
+    androidTarget()
+    iosArm64()
+    //iosSimulatorArm64()
+
+    targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().configureEach {
+        binaries.framework {
+            baseName = "Common"
+            isStatic = true
+        }
+    }
+
+    jvmToolchain(21)
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(compose.material3)
+            implementation(compose.ui)
+            implementation(compose.components.resources)
+            implementation(libs.navigation.compose)
+            implementation(libs.ui.tooling.preview)
+            implementation(libs.ui.backhandler)
+            implementation(libs.zoomable)
+//            implementation(libs.androidx.core.ktx)
+//            implementation(libs.androidx.lifecycle.runtime.ktx)
+//            implementation(libs.androidx.activity.compose)
+//            implementation(libs.androidx.ui.graphics)
+//            implementation(libs.androidx.compose.ui.graphics)
+//            implementation(libs.androidx.compose.ui.tooling.preview)
+//            implementation(libs.androidx.compose.material3)
+            implementation(libs.kotlinx.serialization.json)
+//            implementation(libs.androidx.activity)
+//            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.room.runtime)
+//            implementation(libs.androidx.sqlite.bundled)
+//            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlin.reflect)
+            implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
+            implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
+        }
+        androidMain.dependencies {
+            implementation(project(":library-client-rtsp"))
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
+    }
+
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+}
+
+dependencies {
+    add("kspAndroid", libs.androidx.room.compiler)
+    //add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+    //add("kspIosX64", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
 }
 
 android {
-    namespace = "dev.danielc"
+    namespace = "dev.danielc.fudge"
     compileSdk = 37
-
     defaultConfig {
         applicationId = "dev.danielc"
         minSdk = 24
@@ -26,6 +108,10 @@ android {
 
         // Nobody uses 32bit anymore, disabling 32bit arm/x86 for now
         //ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     buildTypes.getByName("debug") {
@@ -81,6 +167,7 @@ android {
             }
         }
     }
+
     buildTypes {
         release {
             if (false) {
@@ -98,6 +185,7 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
     }
+
     externalNativeBuild {
         cmake {
             path = file("../ndk/CMakeLists.txt")
@@ -116,56 +204,7 @@ android {
     }
 }
 
-// https://developer.android.com/training/data-storage/room/migrating-db-versions
-class RoomSchemaArgProvider(
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    val schemaDir: File
-) : CommandLineArgumentProvider {
-    override fun asArguments(): Iterable<String> {
-        return listOf("room.schemaLocation=${schemaDir.path}")
-    }
-}
-ksp {
-  arg(RoomSchemaArgProvider(File(projectDir, "schemas")))
-}
-
-tasks.register<Exec>("compileModules") {
-    group = "verification"
-    description = "Compiles and copies modules"
-    doNotTrackState("Always run this script during compilation")
-    commandLine("bash", "-c", "cd ../modules && make install_fudge")
-}
-tasks.register<Exec>("compileLibs") {
-    group = "verification"
-    description = "Compiles and copies modules"
-    doNotTrackState("Always run this script during compilation")
-    commandLine("bash", "-c", "cd ../libpak/typescript && make")
-}
-tasks.named("preBuild") {
-    dependsOn("compileModules", "compileLibs")
-}
-
 dependencies {
-    implementation(project(":common"))
-
-    // libs
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.ui.graphics)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.activity)
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.kotlin.reflect)
-    ksp(libs.androidx.room.compiler)
-
-    // Test stuff
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

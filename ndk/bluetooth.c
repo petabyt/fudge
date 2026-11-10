@@ -57,7 +57,7 @@ static int setup_listener(struct PakBtDevice *dev) {
 		jbyteArray struct_o = (*env)->NewByteArray(env, (jsize) sizeof(struct PakBtDevice *));
 		(*env)->SetByteArrayRegion(env, struct_o, 0, (jsize) sizeof(struct PakBtDevice *), (const jbyte *)&dev);
 
-		jclass device_c = (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device");
+		jclass device_c = (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device");
 		jmethodID connect_m = (*env)->GetMethodID(env, device_c, "connectGattNative", "([B)I");
 		int rc = (*env)->CallIntMethod(env, dev->priv->device, connect_m, struct_o);
 		(*env)->PopLocalFrame(env, NULL);
@@ -86,10 +86,10 @@ struct PakGattCharacteristic *characteristic_from_jobject(JNIEnv *env, struct Pa
 	return characteristic;
 }
 
-JNIEXPORT void JNICALL Java_dev_danielc_common_Bluetooth_00024NativeBluetoothGattCallback_onEvent(JNIEnv *env, jobject thiz, jint id, jobject chr) {
+JNIEXPORT void JNICALL Java_dev_danielc_fudge_Bluetooth_00024NativeBluetoothGattCallback_onEvent(JNIEnv *env, jobject thiz, jint id, jobject chr) {
 	set_jni_env_ctx(env, NULL);
 	struct PakBtDevice *dev = NULL;
-	jfieldID field = (*env)->GetFieldID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$NativeBluetoothGattCallback"), "struct", "[B");
+	jfieldID field = (*env)->GetFieldID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$NativeBluetoothGattCallback"), "struct", "[B");
 	jobject struct_o = (*env)->GetObjectField(env, thiz, field);
 	if (struct_o == NULL) return;
 	(*env)->GetByteArrayRegion(env, struct_o, 0, (jsize)sizeof(struct PakBtDevice *), (jbyte *)&dev);
@@ -103,7 +103,7 @@ JNIEXPORT void JNICALL Java_dev_danielc_common_Bluetooth_00024NativeBluetoothGat
 }
 
 static jobject get_default_adapter(JNIEnv *env) {
-	jclass btclass = (*env)->FindClass(env, "dev/danielc/common/Bluetooth");
+	jclass btclass = (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth");
 	jmethodID getdefaultadapter = (*env)->GetStaticMethodID(env, btclass, "getDefaultAdapter", "()Landroid/bluetooth/BluetoothAdapter;");
 	return (*env)->CallStaticObjectMethod(env, btclass, getdefaultadapter);
 }
@@ -147,10 +147,10 @@ static void free_dev(void *ptr, void *arg) {
 
 int pak_bt_device_update(struct PakBt *ctx, struct PakBtDevice *dev) {
 	JNIEnv *env = get_jni_env();
-	jmethodID is_connected_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "isConnected", "()Z");
+	jmethodID is_connected_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "isConnected", "()Z");
 	dev->is_connected = (int)(*env)->CallBooleanMethod(env, dev->priv->device, is_connected_m);
 
-	jmethodID is_bonded_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "isBonded", "()Z");
+	jmethodID is_bonded_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "isBonded", "()Z");
 	dev->is_bonded = (int)(*env)->CallBooleanMethod(env, dev->priv->device, is_bonded_m);
 
 	return 0;
@@ -164,17 +164,17 @@ struct PakBtDevice *pak_bt_device_from_jobject(JNIEnv *env, struct PakBt *ctx, j
 	device->priv->ctx = ctx;
 	pak_gc_add_ex(&ctx->gc, BT_DEVICE, device, free_dev, ctx);
 	device->priv->device = (*env)->NewGlobalRef(env, dev_o);
-	jfieldID dev_f = (*env)->GetFieldID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "dev", "Landroid/bluetooth/BluetoothDevice;");
+	jfieldID dev_f = (*env)->GetFieldID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "dev", "Landroid/bluetooth/BluetoothDevice;");
 	device->priv->bluetooth_device = (*env)->NewGlobalRef(env, (*env)->GetObjectField(env, dev_o, dev_f));
 	pak_bt_device_update(NULL, device);
 
-	jfieldID name_f = (*env)->GetFieldID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "name", "Ljava/lang/String;");
+	jfieldID name_f = (*env)->GetFieldID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "name", "Ljava/lang/String;");
 	jobject name_o = (*env)->GetObjectField(env, dev_o, name_f);
 	const char *name_s = (*env)->GetStringUTFChars(env, name_o, NULL);
 	strlcpy(device->name, name_s, sizeof(device->name));
 	(*env)->ReleaseStringUTFChars(env, name_o, name_s);
 
-	jobject address_o = (*env)->GetObjectField(env, dev_o, (*env)->GetFieldID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "address", "Ljava/lang/String;"));
+	jobject address_o = (*env)->GetObjectField(env, dev_o, (*env)->GetFieldID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "address", "Ljava/lang/String;"));
 	const char *address_s = (*env)->GetStringUTFChars(env, address_o, NULL);
 	strlcpy(device->mac_address, address_s, sizeof(device->mac_address));
 	(*env)->ReleaseStringUTFChars(env, address_o, address_s);
@@ -190,8 +190,8 @@ static int scan_devices(struct PakBt *ctx, struct PakBtAdapter *adapter, int fil
 
 	(*env)->PushLocalFrame(env, 10);
 
-	jclass btclass = (*env)->FindClass(env, "dev/danielc/common/Bluetooth");
-	jmethodID getbondeddevices = (*env)->GetStaticMethodID(env, btclass, "getBondedDevices", "()[Ldev/danielc/common/Bluetooth$Device;");
+	jclass btclass = (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth");
+	jmethodID getbondeddevices = (*env)->GetStaticMethodID(env, btclass, "getBondedDevices", "()[Ldev/danielc/fudge/Bluetooth$Device;");
 	jobjectArray array = (*env)->CallStaticObjectMethod(env, btclass, getbondeddevices);
 	if (array == NULL) {
 		(*env)->PopLocalFrame(env, NULL);
@@ -204,10 +204,10 @@ static int scan_devices(struct PakBt *ctx, struct PakBtAdapter *adapter, int fil
 	for (jsize i = 0; i < n_dev; i++) {
 		jobject dev_o = (*env)->GetObjectArrayElement(env, array, i);
 
-		jmethodID is_connected_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "isConnected", "()Z");
+		jmethodID is_connected_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "isConnected", "()Z");
 		jboolean is_connected = (*env)->CallBooleanMethod(env, dev_o, is_connected_m);
 
-		jmethodID is_bonded_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "isBonded", "()Z");
+		jmethodID is_bonded_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "isBonded", "()Z");
 		jboolean is_bonded = (*env)->CallBooleanMethod(env, dev_o, is_bonded_m);
 
 		int matches = is_connected && (filter & PAK_FILTER_CONNECTED);
@@ -241,7 +241,7 @@ struct PakBtDevice *pak_bt_get_device(struct PakBt *ctx, struct PakBtAdapter *ad
 int pak_bt_unref_device(struct PakBt *ctx, struct PakBtDevice *device) {
 	JNIEnv *env = get_jni_env();
 	pak_gc_remove(&ctx->gc, device);
-	(*env)->CallVoidMethod(env, device->priv->device, (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "closeAll", "()V"));
+	(*env)->CallVoidMethod(env, device->priv->device, (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "closeAll", "()V"));
 	(*env)->DeleteGlobalRef(env, device->priv->device);
 	(*env)->DeleteGlobalRef(env, device->priv->bluetooth_device);
 	free(device->priv);
@@ -257,7 +257,7 @@ int pak_bt_device_connect(struct PakBt *ctx, struct PakBtDevice *device) {
 int pak_bt_device_disconnect(struct PakBt *ctx, struct PakBtDevice *device) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	(*env)->CallVoidMethod(env, device->priv->device, (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "closeAll", "()V"));
+	(*env)->CallVoidMethod(env, device->priv->device, (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "closeAll", "()V"));
 	(*env)->PopLocalFrame(env, NULL);
 	return 0;
 }
@@ -265,7 +265,7 @@ int pak_bt_device_disconnect(struct PakBt *ctx, struct PakBtDevice *device) {
 int pak_bt_device_create_bond(struct PakBt *ctx, struct PakBtDevice *device) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	int rc = (*env)->CallIntMethod(env, device->priv->device, (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "createBond", "()I"));
+	int rc = (*env)->CallIntMethod(env, device->priv->device, (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "createBond", "()I"));
 	(*env)->PopLocalFrame(env, NULL);
 	return rc;
 }
@@ -273,7 +273,7 @@ int pak_bt_device_create_bond(struct PakBt *ctx, struct PakBtDevice *device) {
 struct PakBtSocket *pak_bt_connect_to_service_channel(struct PakBt *ctx, struct PakBtDevice *dev, const char *uuid) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	jclass device = (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device");
+	jclass device = (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device");
 	jmethodID connect_m = (*env)->GetMethodID(env, device, "connectToServiceChannel", "(Ljava/lang/String;)Landroid/bluetooth/BluetoothSocket;");
 	jstring uuid_s = (*env)->NewStringUTF(env, uuid);
 	jobject socket = (*env)->CallObjectMethod(env, dev->priv->device, connect_m, uuid_s);
@@ -376,7 +376,7 @@ struct PakGattService *pak_bt_get_gatt_service(struct PakBt *ctx, struct PakBtDe
 	int rc = setup_listener(device);
 	if (rc) return NULL;
 	(*env)->PushLocalFrame(env, 10);
-	jclass device_c = (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device");
+	jclass device_c = (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device");
 	jmethodID get_service_m = (*env)->GetMethodID(env, device_c, "getService", "(I)Landroid/bluetooth/BluetoothGattService;");
 	jobject service_o = (*env)->CallObjectMethod(env, device->priv->device, get_service_m, index);
 	if (service_o == NULL) {
@@ -442,7 +442,7 @@ int pak_bt_unref_gatt_characteristic(struct PakBt *ctx, struct PakGattCharacteri
 int pak_bt_read_characteristic(struct PakBt *ctx, struct PakGattCharacteristic *characteristic, int blocking) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "readAsync", "(Landroid/bluetooth/BluetoothGattCharacteristic;)I");
+	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "readAsync", "(Landroid/bluetooth/BluetoothGattCharacteristic;)I");
 	jint rc = (*env)->CallIntMethod(env, characteristic->priv->device->priv->device, read_m, characteristic->priv->obj);
 	(*env)->PopLocalFrame(env, NULL);
 	return rc;
@@ -451,7 +451,7 @@ int pak_bt_read_characteristic(struct PakBt *ctx, struct PakGattCharacteristic *
 unsigned int pak_bt_read_characteristic_cached_value(struct PakBt *ctx, struct PakGattCharacteristic *characteristic, uint8_t *buffer, unsigned int max) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "getCachedValue", "(Landroid/bluetooth/BluetoothGattCharacteristic;)[B");
+	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "getCachedValue", "(Landroid/bluetooth/BluetoothGattCharacteristic;)[B");
 	jbyteArray data = (*env)->CallObjectMethod(env, characteristic->priv->device->priv->device, read_m, characteristic->priv->obj);
 	if (data == NULL) { (*env)->PopLocalFrame(env, NULL); return 0; }
 	jsize len = (*env)->GetArrayLength(env, data);
@@ -463,7 +463,7 @@ unsigned int pak_bt_read_characteristic_cached_value(struct PakBt *ctx, struct P
 unsigned int pak_bt_get_manufacturer_data(struct PakBt *ctx, struct PakBtDevice *device, int index, uint8_t *buffer, unsigned int max) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "getManufacturerData", "(I)[B");
+	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "getManufacturerData", "(I)[B");
 	jbyteArray data = (*env)->CallObjectMethod(env, device->priv->device, read_m, index);
 	if (data == NULL) { (*env)->PopLocalFrame(env, NULL); return 0; }
 	jsize len = (*env)->GetArrayLength(env, data);
@@ -479,7 +479,7 @@ int pak_bt_write_characteristic(struct PakBt *ctx, struct PakGattCharacteristic 
 	jbyteArray data_o = (*env)->NewByteArray(env, (jsize)length);
 	(*env)->SetByteArrayRegion(env, data_o, 0, (jsize)length, (const jbyte *)data);
 
-	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "writeAsync", "(Landroid/bluetooth/BluetoothGattCharacteristic;[B)I");
+	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "writeAsync", "(Landroid/bluetooth/BluetoothGattCharacteristic;[B)I");
 	jint rc = (*env)->CallIntMethod(env, characteristic->priv->device->priv->device, read_m, characteristic->priv->obj, data_o);
 	(*env)->PopLocalFrame(env, NULL);
 	return rc;
@@ -488,7 +488,7 @@ int pak_bt_write_characteristic(struct PakBt *ctx, struct PakGattCharacteristic 
 int pak_bt_set_watching_characteristic(struct PakBt *ctx, struct PakGattCharacteristic *characteristic, int v) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "setNotification", "(Landroid/bluetooth/BluetoothGattCharacteristic;Z)I");
+	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "setNotification", "(Landroid/bluetooth/BluetoothGattCharacteristic;Z)I");
 	jint rc = (*env)->CallIntMethod(env, characteristic->priv->device->priv->device, read_m, characteristic->priv->obj, v);
 	(*env)->PopLocalFrame(env, NULL);
 	return rc;
@@ -497,7 +497,7 @@ int pak_bt_set_watching_characteristic(struct PakBt *ctx, struct PakGattCharacte
 int pak_bt_set_cccd(struct PakBt *ctx, struct PakGattCharacteristic *characteristic, int v) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "setCccd", "(Landroid/bluetooth/BluetoothGattCharacteristic;I)I");
+	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "setCccd", "(Landroid/bluetooth/BluetoothGattCharacteristic;I)I");
 	jint rc = (*env)->CallIntMethod(env, characteristic->priv->device->priv->device, read_m, characteristic->priv->obj, v);
 	(*env)->PopLocalFrame(env, NULL);
 	return rc;
@@ -506,7 +506,7 @@ int pak_bt_set_cccd(struct PakBt *ctx, struct PakGattCharacteristic *characteris
 int pak_bt_watch_characteristic(struct PakBt *ctx, struct PakGattCharacteristic *characteristic, unsigned int ms) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
-	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/common/Bluetooth$Device"), "waitBlocking", "(Landroid/bluetooth/BluetoothGattCharacteristic;I)I");
+	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "waitBlocking", "(Landroid/bluetooth/BluetoothGattCharacteristic;I)I");
 	jint rc = (*env)->CallIntMethod(env, characteristic->priv->device->priv->device, read_m, characteristic->priv->obj, (jint)ms);
 	(*env)->PopLocalFrame(env, NULL);
 	return rc;
