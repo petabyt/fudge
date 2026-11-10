@@ -33,8 +33,6 @@ import dev.danielc.common.Pak.requirePermissionBlocking
 import java.util.concurrent.Semaphore
 import java.util.regex.Pattern
 import androidx.core.net.toUri
-import dev.danielc.common.Pak
-import dev.danielc.common.PakReturnCode
 
 actual object WiFi {
     const val TAG: String = "wifi"
@@ -116,7 +114,7 @@ actual object WiFi {
             builder.setBssid(MacAddress.fromString(filter.bssid))
         }
         if (filter.password != null) {
-            if (filter.securityType == null || filter.securityType.startsWith("wpa2")) {
+            if (filter.securityType.startsWith("wpa2")) {
                 builder.setWpa2Passphrase(filter.password)
             } else {
                 builder.setWpa3Passphrase(filter.password)
@@ -400,9 +398,7 @@ actual object WiFi {
 
     fun isNetworkValid(net: Network?): Boolean {
         val connectivityManager = activity.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager? ?: return false
-        val wifiInfo = connectivityManager.getNetworkInfo(net)
-        if (net == null) return false
-        if (wifiInfo == null) return false
+        val wifiInfo = connectivityManager.getNetworkInfo(net ?: return false) ?: return false
         return wifiInfo.isAvailable()
     }
 

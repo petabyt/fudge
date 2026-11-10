@@ -80,12 +80,12 @@ actual object Bluetooth {
         }
 
     actual fun fromAddress(address: String): Device {
-        return Bluetooth.Device(defaultAdapter!!, defaultAdapter!!.getRemoteDevice(address))
+        return Device(defaultAdapter!!, defaultAdapter!!.getRemoteDevice(address))
     }
 
     /// Opens a dialog to save an access point as a companion device
     @SuppressLint("WrongConstant")
-    actual suspend fun pairWithDeviceCompanion(filters: List<BtFilter>, companionName: String, deviceType: PakDevice, scanCallback: ScanCallback, deleteOldBond: Boolean): PakReturnCode {
+    actual suspend fun pairWithDeviceCompanion(filters: List<BtFilter>, companionName: String, deviceType: PakDevice?, scanCallback: ScanCallback, deleteOldBond: Boolean): PakReturnCode {
         val ctx = Pak.activity
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             return PakReturnCode.UNSUPPORTED
@@ -194,7 +194,7 @@ actual object Bluetooth {
             } else {
                 scanCallback.onFound(Device(defaultAdapter!!, result.device, result, associationInfo))
             }
-        } catch (e: Pak.CancelException) {
+        } catch (_: Pak.CancelException) {
             return PakReturnCode.CANCELLED
         }
         return PakReturnCode.NONE
@@ -244,20 +244,19 @@ actual object Bluetooth {
 
         val associationId: Int?
             get() {
-                if (associationInfo == null) return null
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    return associationInfo!!.id
+                return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    associationInfo?.id
                 } else {
-                    return null
+                    null
                 }
             }
 
         actual val isBonded: Boolean
             get() {
-                try {
-                    return dev.bondState == BluetoothDevice.BOND_BONDED
+                return try {
+                    dev.bondState == BluetoothDevice.BOND_BONDED
                 } catch (_: SecurityException) {
-                    return false
+                    false
                 }
             }
 
@@ -285,9 +284,9 @@ actual object Bluetooth {
                 } catch (e: Exception) { Log.e(TAG, "removeBond: ${e.message}") }
             }
             if (dev.bondState == BluetoothDevice.BOND_NONE) {
-                Log.d(Bluetooth.TAG, "Bond was removed")
+                Log.d(TAG, "Bond was removed")
             } else {
-                Log.e(Bluetooth.TAG, "Bond was not removed")
+                Log.e(TAG, "Bond was not removed")
             }
             return PakReturnCode.NONE
         }
@@ -479,21 +478,22 @@ actual object Bluetooth {
                     this.callback = callback
                     withTimeout(5000.milliseconds) { callback.connectSignal.receive() }
                     if (!isGattConnected) {
-                        Log.e(Bluetooth.TAG, "connectGatt failed after timeout")
-                        return@run PakReturnCode.NO_CONNECTION
-                    }
+                        Log.e(TAG, "connectGatt failed after timeout")
+                        PakReturnCode.NO_CONNECTION
+                    } else {
 
-                    //gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
-                    //gatt.setPreferredPhy(BluetoothDevice.PHY_LE_1M_MASK, BluetoothDevice.PHY_LE_1M_MASK, BluetoothDevice.PHY_OPTION_NO_PREFERRED);
-                    //gatt.requestMtu(185);
-                    //Thread.sleep(6000);
-                    gatt!!.discoverServices()
-                    withTimeout(10000.milliseconds) { callback.gattServicesDiscovered.receive() }
-                    return@run PakReturnCode.NONE
+                        //gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
+                        //gatt.setPreferredPhy(BluetoothDevice.PHY_LE_1M_MASK, BluetoothDevice.PHY_LE_1M_MASK, BluetoothDevice.PHY_OPTION_NO_PREFERRED);
+                        //gatt.requestMtu(185);
+                        //Thread.sleep(6000);
+                        gatt!!.discoverServices()
+                        withTimeout(10000.milliseconds) { callback.gattServicesDiscovered.receive() }
+                        PakReturnCode.NONE
+                    }
                 } catch (_: SecurityException) {
-                    return@run PakReturnCode.PERMISSION
+                    PakReturnCode.PERMISSION
                 } catch (_: InterruptedException) {
-                    return@run PakReturnCode.CANCELLED
+                    PakReturnCode.CANCELLED
                 }
             }.code
         }
@@ -518,8 +518,8 @@ actual object Bluetooth {
                     desc.value = byteArrayOf(value.toByte(), 0)
                     if (gatt!!.writeDescriptor(desc)) {
                         withTimeout(10000.milliseconds) { callback!!.gattDescriptorWrote.receive() }
-                        0
-                    } else -1
+                        PakReturnCode.NONE.code
+                    } else PakReturnCode.UNDEFINED.code
                 } catch (e: InterruptedException) {
                     throw RuntimeException(e)
                 } catch (_: SecurityException) {
@@ -558,18 +558,18 @@ actual object Bluetooth {
 
         fun readAsync(characteristic: BluetoothGattCharacteristic): Int {
             return runBlocking {
-                if (VERBOSE) Log.d(TAG, "Read ${characteristic.uuid.toString()}")
+                if (VERBOSE) Log.d(TAG, "Read ${characteristic.uuid}")
                 try {
                     if (gatt!!.readCharacteristic(characteristic)) {
                         withTimeout(10000.milliseconds) { callback!!.gattCharacteristicRead.receive() }
                         0
                     } else {
-                        Log.e(Bluetooth.TAG, "readCharacteristic")
+                        Log.e(TAG, "readCharacteristic")
                         -1
                     }
-                } catch (e: SecurityException) {
+                } catch (_: SecurityException) {
                     PakReturnCode.PERMISSION.code
-                } catch (e: InterruptedException) {
+                } catch (_: InterruptedException) {
                     PakReturnCode.UNDEFINED.code
                 }
             }
@@ -689,7 +689,7 @@ actual object Bluetooth {
             status: Int,
         ) {
             super.onDescriptorRead(gatt, descriptor, status)
-            gattCharacteristicWrote.trySendBlocking(Unit)
+            gattDescriptorWrote.trySendBlocking(Unit)
         }
 
         override fun onDescriptorRead(

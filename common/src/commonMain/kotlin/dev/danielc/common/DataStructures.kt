@@ -33,7 +33,7 @@ enum class PakReturnCode(val code: Int) {
     NO_CONNECTION(-8),
     CANCELLED(-9),
     DEFERRED(-10);
-    val failed get() = this != NONE // TODO: except CANCELLED
+    val failed get() = this != CANCELLED && this != NONE
     val success get() = this == NONE
     companion object {
         fun fromCode(code: Int): PakReturnCode = entries.find { it.code == code } ?: UNDEFINED

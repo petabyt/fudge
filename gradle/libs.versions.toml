@@ -23,7 +23,7 @@ annotationJvm = "1.11.0"
 material3 = "1.4.0"
 foundation = "1.12.1"
 uiUnit = "1.12.1"
-room = "2.8.4"
+room = "2.8.5"
 
 [libraries]
 androidx-activity = { module = "androidx.activity:activity", version.ref = "activity" }

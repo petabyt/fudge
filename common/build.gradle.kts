@@ -84,4 +84,18 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+
+    buildTypes.getByName("debug") {
+        buildConfigField("boolean", "DEBUG", "true")
+        buildConfigField("Long", "BUILD_TIME", "${System.currentTimeMillis()}L")
+    }
+    buildTypes.getByName("release") {
+        buildConfigField("boolean", "DEBUG", "false")
+        buildConfigField("Long", "BUILD_TIME", "${System.currentTimeMillis()}L")
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 }

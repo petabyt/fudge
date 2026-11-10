@@ -84,6 +84,7 @@ enum class LiveviewWidgetNames(val id: String) {
 }
 
 open class LiveviewModel: BackgroundViewModel() {
+    val currentFps = MutableStateFlow(0)
     private val _state = MutableStateFlow(LiveviewState())
     val state = _state.asStateFlow()
     fun updateWidget(pane: Widget) {

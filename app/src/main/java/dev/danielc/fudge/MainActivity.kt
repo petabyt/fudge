@@ -81,8 +81,7 @@ class MainActivity : ComponentActivity(), ComponentCallbacks2 {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    init {
         mainBuildInfo = BuildInfo(
             time = SimpleDateFormat("MMMM dd yyyy", Locale.getDefault()).format(
                 Date(
@@ -95,6 +94,10 @@ class MainActivity : ComponentActivity(), ComponentCallbacks2 {
             version = BuildConfig.VERSION_NAME,
             osVersion = "Android ${Build.VERSION.SDK_INT}"
         )
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
         if (!NativeRuntime.hasInited) {
             NativeRuntime.hasInited = true

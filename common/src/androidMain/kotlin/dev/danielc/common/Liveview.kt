@@ -17,13 +17,11 @@ import fantasyfudge.common.generated.resources.image
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.painterResource
 
 actual class ModuleLiveviewModel actual constructor(actual val mod: ModuleInstance): LiveviewModel(), SurfaceHolder.Callback {
-    val currentFps = MutableStateFlow(0)
     private var isRtsp: Boolean = false
     private var rtspProcessor: RtspProcessor? = null
     private var currentSurfaceHolder: SurfaceHolder? = null // should be WeakReference?

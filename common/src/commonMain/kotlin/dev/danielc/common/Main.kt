@@ -145,7 +145,7 @@ expect object Bluetooth {
     fun checkPermission(): Boolean
     suspend fun requestConnectPermission()
     fun fromAddress(address: String): Device
-    suspend fun pairWithDeviceCompanion(filters: List<BtFilter>, companionName: String, deviceType: dev.danielc.common.Device, scanCallback: ScanCallback, deleteOldBond: Boolean): PakReturnCode
+    suspend fun pairWithDeviceCompanion(filters: List<BtFilter>, companionName: String, deviceType: dev.danielc.common.Device?, scanCallback: ScanCallback, deleteOldBond: Boolean): PakReturnCode
     fun openEnableBluetoothDialog()
     val isBluetoothEnabled: Boolean
 }

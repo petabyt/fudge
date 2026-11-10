@@ -79,8 +79,3 @@ actual object Http {
         }
     }
 }
-
-actual fun createClipEntry(label: String, text: String): ClipEntry {
-    val clipData = ClipData.newPlainText(label, text)
-    return ClipEntry(clipData)
-}

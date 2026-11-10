@@ -35,6 +35,8 @@ import kotlin.time.TimeSource
 /**
  * To note that a Kotlin function is for use through JNI/C
  */
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS, AnnotationTarget.CONSTRUCTOR)
+@Retention(AnnotationRetention.BINARY)
 annotation class CalledFromNative
 
 typealias JobUpdateCallback = (ModuleJob) -> Unit
@@ -707,7 +709,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                 connectingModel.setPopupText("Connecting to ${filter.ssidPattern ?: "?"}")
                 connectingModel.setTryAgainDisabled(true)
                 val rc = WiFi.connectToAccessPointCompanion(mutableListOf(filter), companionName, callback, true)
-                if (rc != PakReturnCode.CANCELLED && rc.failed) {
+                if (rc.failed) {
                     debugLog("<error>Association error: ${rc}")
                 }
                 connectingModel.setTryAgainDisabled(false)
@@ -777,7 +779,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                     rc = WiFi.connectToAccessPointCompanion(mutableListOf(filter), companionName, callback)
                 }
             }
-            if (rc != PakReturnCode.CANCELLED && rc.failed) {
+            if (rc.failed) {
                 debugLog("<error>Association error: ${rc}")
             }
         }
@@ -823,7 +825,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                 return
             }
 
-            if (saved != null && saved.bluetoothMacAddress != null) {
+            if (saved?.bluetoothMacAddress != null) {
                 doConnect(Bluetooth.fromAddress(saved.bluetoothMacAddress))
                 return
             }
@@ -846,8 +848,8 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
             }
             connectingModel.setTryAgainDisabled(true)
             // TODO GAME_CONTROLLER
-            val rc = Bluetooth.pairWithDeviceCompanion(filters, companionName, Device.GAME_CONTROLLER,callback, true)
-            if (rc != PakReturnCode.CANCELLED && rc.failed) {
+            val rc = Bluetooth.pairWithDeviceCompanion(filters, companionName, null,callback, true)
+            if (rc.failed) {
                 debugLog("<error>Association error: ${rc}")
             }
             connectingModel.setTryAgainDisabled(false)

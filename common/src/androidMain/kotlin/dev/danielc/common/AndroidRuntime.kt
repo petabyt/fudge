@@ -101,6 +101,7 @@ actual object NativeRuntime {
     actual external fun setupWebassemblyModule(mod: ModuleInstance, fileContents: ByteArray): Int
 
     @JvmStatic
+    @CalledFromNative
     fun logGlobalLine(s: String) {
         Log.d("pak_global_log", s)
         Runtime.logGlobalLine(s)
@@ -111,6 +112,7 @@ actual object NativeRuntime {
     }
 
     @JvmStatic
+    @CalledFromNative
     fun getDeviceFriendlyName(): String {
         val deviceName = Settings.Global.getString(Pak.activity.contentResolver, "device_name")
 
