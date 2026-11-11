@@ -1,5 +1,6 @@
-*.iml
+f*.iml
 .gradle
+.kotlin
 /local.properties
 /.idea
 .DS_Store
@@ -22,3 +23,5 @@ ios/**/xcuserdata/
 ios/**/project.xcworkspace/xcuserdata/
 ios/build/
 ios/DerivedData/
+
+test/__pycache__

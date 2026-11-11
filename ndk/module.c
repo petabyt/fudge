@@ -56,6 +56,7 @@ struct PakModule *get_mod(JNIEnv *env, jobject thiz, struct TempStruct *info) {
 	if (struct_id == NULL) abort();
 
 	info->byte_array = (*env)->GetObjectField(env, thiz, struct_id);
+	if (info->byte_array == NULL) pak_abort("info->byte_array is NULL");
 	info->data = (struct ModuleJavaStruct *)(*env)->GetByteArrayElements(env, info->byte_array, NULL);
 	return info->data->ptr;
 }

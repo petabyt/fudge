@@ -178,14 +178,17 @@ expect object WiFi {
     ): PakReturnCode
     val primaryAdapter: Adapter?
     val isWiFiEnabled: Boolean
+
+    // System doesn't support querying APs or requesting connection, user must be prompted to connect manually
     val requiresManualAccessPointConnection: Boolean
 
-
     class ApFilter(
+        // Full SSID string or matching regex pattern
         ssidPattern: String? = null,
         bssid: String? = null,
         password: String? = null,
-        band: Int = -1,
+        // 2 = 2.4ghz, 5 = 5ghz
+        band: Int = 0,
         hidden: Boolean = false,
     ) {
         val ssidPattern: String?
@@ -193,6 +196,7 @@ expect object WiFi {
         val password: String?
         val band: Int
         val hidden: Boolean
+        // "wpa2", "wpa3", etc; unused if password is null
         val securityType: String
     }
 

@@ -145,7 +145,6 @@ open class FileDownloader(val file: FileHandle, val filename: String, val mimeTy
 
     fun save(): FileLayer.Handle? {
         temporaryBuffer?.let {
-            println(dir)
             val fd = FileLayer.openFileForWriting(filename, mimeType, dir)
             if (fd == null) {
                 println("TODO: Failed to open file")

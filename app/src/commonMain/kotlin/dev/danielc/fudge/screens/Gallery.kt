@@ -196,22 +196,14 @@ abstract class GalleryViewModel(
         }
     }
 
-    private suspend fun checkObject(obj: FilesystemObject?, ref: GalleryObjectReference): Boolean {
-        if (obj == null) {
-            if (isThumbnailPriority) {
-                fulfillThumbnail(ref)
-            } else {
-                fulfillMetadata(ref)
-            }
+    private suspend fun checkObject(obj: FilesystemObject, ref: GalleryObjectReference): Boolean {
+        obj.lastUpdated = TimeSource.Monotonic.markNow()
+        if (obj.thumbnail == null && !obj.invalidThumbnail) {
+            fulfillThumbnail(ref)
+        } else if (obj.metadata == null && !obj.invalidMetadata) {
+            fulfillMetadata(ref)
         } else {
-            obj.lastUpdated = TimeSource.Monotonic.markNow()
-            if (obj.thumbnail == null && !obj.invalidThumbnail) {
-                fulfillThumbnail(ref)
-            } else if (obj.metadata == null && !obj.invalidMetadata) {
-                fulfillMetadata(ref)
-            } else {
-                return false
-            }
+            return false
         }
         return true
     }
@@ -396,6 +388,7 @@ abstract class GalleryViewModel(
 
 @Composable
 private fun GalleryThumbnail(obj: FilesystemObject, onClick: () -> Unit = {}, longClick: () -> Unit = {}, scale: Float = 1f) {
+    // TODO: Different UI if invalidThumbnail or invalidMetadata
     val boxModifier = Modifier
         .aspectRatio(1f)
         .background(MaterialTheme.colorScheme.surfaceContainer)
@@ -626,7 +619,6 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
                 }
             },
         ) {
-            println(state?.nSelectedObjects)
             val rows = if (displayType == DisplayType.THUMBNAILS) rows else 1
             LazyVerticalGrid(
                 modifier = Modifier.fillMaxSize(),

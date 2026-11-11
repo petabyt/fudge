@@ -555,6 +555,7 @@ actual object WiFi {
     actual data class ApFilter actual constructor(
         actual val ssidPattern: String?,
         actual val bssid: String?,
+        // TODO: bssidFilter
         actual val password: String?,
         actual val band: Int,
         actual val hidden: Boolean,

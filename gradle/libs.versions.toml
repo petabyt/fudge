@@ -24,6 +24,7 @@ material3 = "1.4.0"
 foundation = "1.12.1"
 uiUnit = "1.12.1"
 room = "2.8.5"
+rules = "1.7.0"
 
 [libraries]
 androidx-activity = { module = "androidx.activity:activity", version.ref = "activity" }
@@ -57,6 +58,7 @@ androidx-annotation-jvm = { group = "androidx.annotation", name = "annotation-jv
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 androidx-compose-ui-unit = { group = "androidx.compose.ui", name = "ui-unit", version.ref = "uiUnit" }
+androidx-rules = { group = "androidx.test", name = "rules", version.ref = "rules" }
 
 [plugins]
 androidx-room = { id = "androidx.room", version.ref = "room" }

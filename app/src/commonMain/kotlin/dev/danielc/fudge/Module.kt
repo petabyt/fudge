@@ -1,4 +1,5 @@
 package dev.danielc.fudge
+import dev.danielc.fudge.Runtime.errorCodeToString
 import dev.danielc.fudge.screens.ConnectingRequiredAction
 import dev.danielc.fudge.screens.ConnectingScreenModel
 import dev.danielc.fudge.screens.ConsoleModel
@@ -225,7 +226,7 @@ class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: Vi
                 if (rc == PakReturnCode.CANCELLED) {
                     onCancel()
                 } else if (rc.failed) {
-                    viewerViewModel.setError("Image download error: ${rc}")
+                    viewerViewModel.setError("Image download error: ${errorCodeToString(rc)}")
                 } else if (viewerViewModel.viewerState.value?.isLoading == true) {
                     viewerViewModel.setError("BUG: Image not loaded entirely by module")
                 }
@@ -453,7 +454,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
     private var currentTickIntervalUs: Int = (100 * 1000)
     private var mainLoopJob: Job? = null
     var initJob: Job? = null
-    private var currentScreen: Screen = Screen.CONNECT
+    var currentScreen: Screen = Screen.CONNECT
     var isConnected = false
     var disconnectReason: String? = null
     var disconnectedErrorCode: PakReturnCode? = null
@@ -461,7 +462,6 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
     var downloadedItemPaths: List<String> = emptyList()
 
     init {
-        Runtime.addModuleInstance(this)
         if (request.savedDeviceUniqueId != null) {
             val savedEntry = Runtime.savedDevices.value.find { it.uniqueIdentifier == request.savedDeviceUniqueId }
             if (savedEntry != null) dashboardModel.setSaved()
@@ -497,6 +497,9 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                 homeModelView.initializationError.value = true
             }
         }
+
+        Runtime.addModuleInstance(this)
+
         // Keeping the screen on is desirable for downloader and liveview, which is most module functionality
         NativeRuntime.keepScreenOn(true)
     }

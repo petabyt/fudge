@@ -45,7 +45,7 @@ jobject pak_wifi_ap_filter_to_jobject(JNIEnv *env, struct PakWiFiApFilter *filte
 		filter->ssid_pattern ? (*env)->NewStringUTF(env, filter->ssid_pattern) : NULL,
 		filter->bssid ? (*env)->NewStringUTF(env, filter->bssid) : NULL,
 		filter->password ? (*env)->NewStringUTF(env, filter->password) : NULL,
-		filter->has_band ? filter->band : -1,
+		 (jint)filter->band,
 		(jboolean)filter->is_hidden
 	);
 }

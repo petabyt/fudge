@@ -30,8 +30,8 @@ import android.os.ParcelUuid
 import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.core.util.isEmpty
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import java.io.IOException
@@ -265,7 +265,6 @@ actual object Bluetooth {
             setupListener()
             if (dev.bondState == BluetoothDevice.BOND_NONE) return PakReturnCode.NONE
             Log.d(TAG, "Removing bond...")
-            // Remove existing bond from system (requires association) and Android 15+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
                 if (associationInfo != null && dev.bondState != BluetoothDevice.BOND_NONE) {
                     val deviceManager = Pak.activity.getSystemService(Context.COMPANION_DEVICE_SERVICE) as CompanionDeviceManager
@@ -275,7 +274,9 @@ actual object Bluetooth {
                             return PakReturnCode.NON_FATAL
                         }
                         withTimeout(10000.milliseconds) { bondSignal.receive() }
-                    } catch (_: Exception) { }
+                    } catch (_: Exception) { } catch (_: TimeoutCancellationException) {
+                        PakReturnCode.NON_FATAL.code
+                    }
                 }
             } else {
                 try {
@@ -334,12 +335,12 @@ actual object Bluetooth {
                         }
                     } else if (action == BluetoothDevice.ACTION_BOND_STATE_CHANGED) {
                         if (dev.bondState == BluetoothDevice.BOND_BONDED || dev.bondState == BluetoothDevice.BOND_NONE) {
-                            bondSignal.trySendBlocking(Unit)
+                            bondSignal.trySend(Unit)
                         }
                         Log.d(TAG, "Bond state: ${dev.bondState}")
                     } else if (action == BluetoothDevice.ACTION_KEY_MISSING) {
                         keyMissingFromBonding = true
-                        bondSignal.trySendBlocking(Unit)
+                        bondSignal.trySend(Unit)
                     }
                     Log.d(TAG, "Bt Event: $action")
                 }
@@ -453,7 +454,7 @@ actual object Bluetooth {
                                 return@run PakReturnCode.IO
                             }
                             if (VERBOSE) Log.d(TAG, "Waiting for bond callback")
-                            bondSignal.trySendBlocking(Unit)
+                            withTimeout(20000.milliseconds) { bondSignal.receive() }
                             if (keyMissingFromBonding) {
                                 return@run PakReturnCode.UNDEFINED
                             } else if (dev.bondState != BluetoothDevice.BOND_BONDED) {
@@ -465,13 +466,15 @@ actual object Bluetooth {
                         return@run PakReturnCode.PERMISSION
                     } catch (_: InterruptedException) {
                         return@run PakReturnCode.CANCELLED
+                    } catch (_: TimeoutCancellationException) {
+                        PakReturnCode.NON_FATAL
                     }
                 }.code
             }
         }
 
         suspend fun connectGatt(ctx: Context?, callback: NativeBluetoothGattCallback): Int {
-            return Bluetooth.cancellableRunnable.run {
+            return cancellableRunnable.run {
                 try {
                     setupListener()
                     gatt = dev.connectGatt(ctx, false, callback)
@@ -494,6 +497,8 @@ actual object Bluetooth {
                     PakReturnCode.PERMISSION
                 } catch (_: InterruptedException) {
                     PakReturnCode.CANCELLED
+                } catch (_: TimeoutCancellationException) {
+                    PakReturnCode.NON_FATAL
                 }
             }.code
         }
@@ -524,6 +529,8 @@ actual object Bluetooth {
                     throw RuntimeException(e)
                 } catch (_: SecurityException) {
                     PakReturnCode.PERMISSION.code
+                } catch (_: TimeoutCancellationException) {
+                    PakReturnCode.NON_FATAL.code
                 }
             }
         }
@@ -551,6 +558,8 @@ actual object Bluetooth {
                         PakReturnCode.PERMISSION.code
                     } catch (_: InterruptedException) {
                         PakReturnCode.UNDEFINED.code
+                    } catch (_: TimeoutCancellationException) {
+                        PakReturnCode.NON_FATAL.code
                     }
                 }
             }
@@ -571,6 +580,8 @@ actual object Bluetooth {
                     PakReturnCode.PERMISSION.code
                 } catch (_: InterruptedException) {
                     PakReturnCode.UNDEFINED.code
+                } catch (_: TimeoutCancellationException) {
+                    PakReturnCode.NON_FATAL.code
                 }
             }
         }
@@ -594,6 +605,8 @@ actual object Bluetooth {
                     PakReturnCode.PERMISSION.code
                 } catch (_: InterruptedException) {
                     PakReturnCode.UNDEFINED.code
+                } catch (_: TimeoutCancellationException) {
+                    PakReturnCode.NON_FATAL.code
                 }
             }
         }
@@ -690,7 +703,7 @@ actual object Bluetooth {
             status: Int,
         ) {
             super.onDescriptorRead(gatt, descriptor, status)
-            gattDescriptorWrote.trySendBlocking(Unit)
+            gattDescriptorWrote.trySend(Unit)
         }
 
         override fun onDescriptorRead(

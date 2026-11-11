@@ -187,7 +187,6 @@ fun FeedbackDialog(dismiss: () -> Unit = {}, finished: () -> Unit = dismiss, rep
                             description = description
                         ))
                         if (rc.isSuccessful) { CoroutineScope(Dispatchers.Main).launch { finished() } } else {
-                            println(rc)
                             errorMessage = "Error code ${rc.code}"
                         }
                     } catch (e: Exception) {

@@ -1,3 +1,8 @@
+import org.jetbrains.compose.ExperimentalComposeLibrary
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -45,6 +50,12 @@ kotlin {
 
     jvmToolchain(21)
 
+    androidTarget {
+        compilerOptions { jvmTarget.set(JvmTarget.JVM_21) }
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
+    }
+
     sourceSets {
         commonMain.dependencies {
             implementation(compose.material3)
@@ -74,8 +85,17 @@ kotlin {
         androidMain.dependencies {
             implementation(project(":library-client-rtsp"))
         }
+        androidInstrumentedTest.dependencies {
+            implementation("androidx.test:core:1.6.1")
+            implementation("androidx.test:rules:1.7.0")
+            implementation("androidx.test:core-ktx:1.6.1")
+            implementation("androidx.test:runner:1.6.1")
+            implementation("androidx.test.ext:junit:1.2.1")
+        }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            @OptIn(ExperimentalComposeLibrary::class)
+            implementation(compose.uiTest)
         }
     }
 
@@ -205,13 +225,17 @@ android {
 }
 
 dependencies {
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    androidTestImplementation("androidx.test:runner:1.6.2")
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+//    testImplementation(libs.junit)
+//    androidTestImplementation(libs.androidx.junit)
+//    androidTestImplementation(libs.androidx.espresso.core)
+//    androidTestImplementation(platform(libs.androidx.compose.bom))
+//    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+//    androidTestImplementation("androidx.test:runner:1.6.2")
+//    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+//    debugImplementation(libs.androidx.compose.ui.tooling)
+//    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    add("kspAndroid", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

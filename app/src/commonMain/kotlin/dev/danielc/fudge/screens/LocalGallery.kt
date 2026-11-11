@@ -35,7 +35,7 @@ class LocalGalleryViewModel: GalleryViewModel(isRemoteFilesystem = false) {
                 updateMetadata(i, files[i].metadata)
             }
             enqueueObjects((0..100).toList())
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // ..
         }
     }

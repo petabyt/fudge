@@ -76,18 +76,19 @@ object Runtime {
     var connectableDevices = MutableStateFlow<List<ConnectableDevice>>(emptyList())
     var moduleManifests = MutableStateFlow(listOf<ModuleManifest>())
     var savedDevices: StateFlow<List<SavedDeviceEntity>> = NativeRuntime.getDatabaseNullable()?.deviceDao()?.getAllDevices()?.stateIn(
-        CoroutineScope(Dispatchers.IO),
-        SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
-        emptyList()
-    ) ?: MutableStateFlow(listOf()) // Compose preview fallback
+            CoroutineScope(Dispatchers.IO),
+            SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
+            emptyList()
+        ) ?: MutableStateFlow(listOf()) // Compose preview fallback
     val appSettings: StateFlow<AppSettingEntity> = NativeRuntime.getDatabaseNullable()?.settingsDao()?.getFlow()
-    ?.map { it ?: AppSettingEntity() }
-    ?.stateIn(
-        CoroutineScope(Dispatchers.IO),
-        SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
-        AppSettingEntity()
-    ) ?: MutableStateFlow(AppSettingEntity(1, "/home/daniel/Pictures")) // Compose preview fallback
+        ?.map { it ?: AppSettingEntity() }
+        ?.stateIn(
+            CoroutineScope(Dispatchers.IO),
+            SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
+            AppSettingEntity()
+        ) ?: MutableStateFlow(AppSettingEntity(1, "/home/daniel/Pictures")) // Compose preview fallback
 
+    var moduleInstanceCallback: ((ModuleInstance) -> Unit)? = null
     var moduleInstances = mutableMapOf<Int, ModuleInstance>()
     private var moduleCounter = 0
 
@@ -130,6 +131,7 @@ object Runtime {
 
     fun addModuleInstance(mod: ModuleInstance): Int {
         moduleInstances.put(++moduleCounter, mod)
+        CoroutineScope(Dispatchers.IO).launch { moduleInstanceCallback?.invoke(mod) }
         return moduleCounter
     }
 
