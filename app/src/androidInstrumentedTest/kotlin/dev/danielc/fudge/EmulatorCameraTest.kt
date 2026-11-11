@@ -47,16 +47,12 @@ class EmulatorCameraTest {
             if (waitForCondition(15000) { mod.isConnected }) fail("Connecting timeout")
             if (waitForCondition(1000) { mod.currentScreen == Screen.DASHBOARD }) fail("Dashboard screen timeout")
             println("debug log: ${mod.getVerboseLog()}")
-            runBlocking {
-                mod.switchScreen(Screen.FILE_GALLERY, true, {})
-                mod.galleryViewModel.goToViewer(FileHandle(0))
+            val screens = mod.homeModelView.homeState.value.supportedNavBarScreenList
+            for (s in screens) {
+                runBlocking {
+                    mod.switchScreen(s, true, {})
+                }
             }
-//            val screens = mod.homeModelView.homeState.value.supportedNavBarScreenList
-//            for (s in screens) {
-//                runBlocking {
-//                    mod.switchScreen(s, true, {})
-//                }
-//            }
         }
     }
 }

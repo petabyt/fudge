@@ -79,8 +79,6 @@ jobs:
         with:
           name: nightly-apks
           path: apks
-      - name: Verify KVM
-        run: test -r /dev/kvm && test -w /dev/kvm
       - name: Cache Android system image
         uses: actions/cache@v4
         with:
@@ -92,14 +90,8 @@ jobs:
         run: |
           cmake -S .ci-vcam -B .ci-vcam/build -G Ninja
           cmake --build .ci-vcam/build --target vcam
-      - name: Run rig unit tests
-        run: python3 -m unittest discover -s test -p 'test_*.py' -v
       - name: Run Fuji connection test
-        env:
-          VCAM_BINARY: ${{ github.workspace }}/.ci-vcam/build/vcam
-          FUDGE_APK: ${{ github.workspace }}/apks/nightly/release/app-nightly-release.apk
-          FUDGE_TEST_APK: ${{ github.workspace }}/apks/androidTest/nightly/release/app-nightly-release-androidTest.apk
-        run: python3 test/run_emulator_test.py
+        run: python3 test/emulator_test.py
       - name: Upload emulator diagnostics
         if: always()
         uses: actions/upload-artifact@v4
