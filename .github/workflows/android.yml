@@ -89,7 +89,8 @@ jobs:
       - name: Build vcam
         run: |
           cmake -S .ci-vcam -B .ci-vcam/build -G Ninja
-          cmake --build .ci-vcam/build --target vcam
+          cmake --build .ci-vcam/build
+          sudo cmake --install .ci-vcam/build
       - name: Run Fuji connection test
         run: python3 test/emulator_test.py
       - name: Upload emulator diagnostics
