@@ -2,6 +2,7 @@
 """Run the Fuji camera test on a disposable Android emulator."""
 
 import argparse
+import json
 import os
 from pathlib import Path
 import re
@@ -16,6 +17,39 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent.parent
 SERIAL = "emulator-5554"
+
+
+def camera_wifi(vcam, device):
+    result = subprocess.run([vcam, device, "tcp", "--dump-camera-json"],
+                            capture_output=True, text=True, timeout=30)
+    if result.returncode:
+        raise RuntimeError(f"Could not get camera info for {device}: {result.stderr.strip() or 'vcam failed'}")
+    try:
+        wifi = json.loads(result.stdout)["wifi"]
+        ssid, password = wifi["ssid"], wifi["password"]
+        if not isinstance(ssid, str) or not ssid or not isinstance(password, str):
+            raise ValueError("expected a nonempty SSID and a string password")
+        if any(c.isspace() for c in ssid + password):
+            raise ValueError("Wi-Fi SSID and password cannot contain whitespace in netsim arguments")
+        if password and len(password) < 8:
+            raise ValueError("Wi-Fi password must contain at least 8 characters")
+    except (ValueError, KeyError, TypeError) as error:
+        raise RuntimeError(f"Invalid Wi-Fi info for {device}: {error}") from error
+    return ssid, password
+
+
+def netsim_wifi_args(help_text, ssid, password):
+    if "--wifi-ssid" in help_text:
+        args = ["--wifi-ssid", ssid]
+        if password:
+            if "--wifi-password" not in help_text:
+                raise RuntimeError("This netsimd does not advertise --wifi-password support")
+            args.extend(["--wifi-password", password])
+    else:
+        args = ["--wifi", ssid]
+        if password:
+            args.append(password)
+    return " ".join(args)
 
 
 def executable(name):
@@ -104,7 +138,7 @@ def stream_app_logcat(adb, finished):
         stop(logcat)
 
 
-def run_fuji_test(adb):
+def run_fuji_test(adb, no_test=False, processes=()):
     def run(*args):
         return subprocess.run(adb + list(args), check=True, timeout=30)
 
@@ -120,12 +154,23 @@ def run_fuji_test(adb):
         run("shell", "iptables", "-t", "nat", "-I", *rule)
         installed = True
         run("logcat", "-c")
+        logcat_thread = threading.Thread(target=stream_app_logcat, args=(adb, logcat_finished), daemon=True)
+        logcat_thread.start()
+        if no_test:
+            print("Emulator ready. Open FantasyFudge to connect; press Ctrl+C to stop.", flush=True)
+            try:
+                while True:
+                    for name, process in processes:
+                        if process.poll() is not None:
+                            raise RuntimeError(f"{name} exited ({process.returncode})")
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                print("Stopping emulator rig.", flush=True)
+                return
         instrumentation = subprocess.Popen(adb + ["shell", "am", "instrument", "-w", "-e", "class",
             "dev.danielc.fudge.EmulatorCameraTest",
             "dev.danielc.fantasyfudge.nightly.test/androidx.test.runner.AndroidJUnitRunner"],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        logcat_thread = threading.Thread(target=stream_app_logcat, args=(adb, logcat_finished), daemon=True)
-        logcat_thread.start()
         deadline = time.monotonic() + 150
         while time.monotonic() < deadline:
             if instrumentation.poll() is not None:
@@ -153,10 +198,13 @@ def run_fuji_test(adb):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--show-ui", action="store_true", help="show the emulator window")
+    parser.add_argument("--no-test", action="store_true", help="keep the rig running for manual testing")
+    parser.add_argument("--device", default="fuji_x_t5", help="vcam camera model (default: fuji_x_t5)")
     args = parser.parse_args()
     sdk = Path(os.environ.setdefault("ANDROID_HOME", str(Path.home() / "Android/Sdk"))).expanduser()
     vcam = os.environ.get("VCAM_BINARY") or shutil.which("vcam") or "/usr/local/vcam"
     vcam = executable(vcam)
+    ssid, password = camera_wifi(vcam, args.device)
     apk = os.environ.get("FUDGE_APK", str(ROOT / "app/build/outputs/apk/nightly/release/app-nightly-release.apk"))
     test_apk = os.environ.get("FUDGE_TEST_APK", str(ROOT / "app/build/outputs/apk/androidTest/nightly/release/app-nightly-release-androidTest.apk"))
     avd = os.environ.get("AVD_NAME", "fudge-ci")
@@ -193,10 +241,10 @@ def main():
         netsimd = Path(emulator).resolve().parent / "netsimd"
         try:
             help_text = subprocess.run([str(netsimd), "--help"], capture_output=True, text=True, timeout=10)
-            modern = help_text.returncode == 0 and "--wifi-ssid" in help_text.stdout
+            netsim_help = help_text.stdout if help_text.returncode == 0 else ""
         except (OSError, subprocess.TimeoutExpired):
-            modern = False
-        wifi = "--wifi-ssid FUJIFILM-XA2-1234" if modern else "--wifi FUJIFILM-XA2-1234"
+            netsim_help = ""
+        wifi = netsim_wifi_args(netsim_help, ssid, password)
         print(f"Starting emulator; output also saved to {artifacts / 'emulator.log'}", flush=True)
         emulator_command = [emulator, "-avd", avd, "-port", "5554", "-no-audio",
             "-no-snapshot", "-no-boot-anim", "-no-metrics", "-gpu", "off", "-cores", "2",
@@ -207,7 +255,7 @@ def main():
                                            stderr=subprocess.STDOUT, text=True, errors="replace")
         output_thread = show_output(emulator_process, artifacts / "emulator.log")
         with (artifacts / "vcam.log").open("w") as log:
-            vcam_process = subprocess.Popen(["stdbuf", "-oL", "-eL", vcam, "fuji_x_t4", "tcp",
+            vcam_process = subprocess.Popen(["stdbuf", "-oL", "-eL", vcam, args.device, "tcp",
                                               "--ip", "127.0.0.1"], stdout=log, stderr=subprocess.STDOUT)
         deadline = time.monotonic() + 240
         while time.monotonic() < deadline:
@@ -224,14 +272,20 @@ def main():
             time.sleep(2)
         else:
             raise RuntimeError("emulator boot timed out")
+        # Keep the emulator's cellular data available when camera Wi-Fi is connected.
+        subprocess.run(adb + ["shell", "svc", "data", "enable"], check=True, timeout=30)
+        subprocess.run(adb + ["shell", "settings", "put", "global", "mobile_data_always_on", "1"],
+                       check=True, timeout=30)
         print("Emulator booted; installing APKs.", flush=True)
         subprocess.run(adb + ["install", "-r", apk], check=True, timeout=120)
-        subprocess.run(adb + ["install", "-r", test_apk], check=True, timeout=120)
+        if not args.no_test:
+            subprocess.run(adb + ["install", "-r", test_apk], check=True, timeout=120)
         for permission in ("BLUETOOTH_SCAN", "BLUETOOTH_CONNECT", "NEARBY_WIFI_DEVICES"):
             subprocess.run(adb + ["shell", "pm", "grant", "dev.danielc.fantasyfudge.nightly",
                                   f"android.permission.{permission}"], check=True, timeout=30)
-        run_fuji_test(adb)
-        if vcam_process.poll() is not None or emulator_process.poll() is not None:
+        run_fuji_test(adb, no_test=args.no_test,
+                      processes=(("emulator", emulator_process), ("vcam", vcam_process)))
+        if not args.no_test and (vcam_process.poll() is not None or emulator_process.poll() is not None):
             raise RuntimeError("emulator or vcam exited during the test")
         failed = False
     finally:

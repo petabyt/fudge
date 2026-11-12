@@ -242,9 +242,9 @@ enum class Screen(val strId: String, val id: Int) {
 }
 
 /**
- * struct PakFileHandle
+ * struct PakObjectHandle
  */
-data class FileHandle(
+data class ObjectHandle(
     val index: Int = 0,
     val storageName: String? = null,
     val path: String? = null,
@@ -263,7 +263,7 @@ data class FileMetadata(
     val updatedDate: String? = null,
     val orientation: Int = 0,
 ) {
-    val createdTimestamp = if (createdDate == null ) null else Timestamp.fromString(createdDate)
+    val createdTimestamp = if (createdDate == null) null else Timestamp.fromString(createdDate)
     fun getMimeType(): MimeType {
         return MimeType.fromString(this.mimeType.orEmpty())
     }

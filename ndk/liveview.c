@@ -20,7 +20,7 @@ METHODDEF(void)my_error_exit(j_common_ptr cinfo) {
 
 static int is_jpeg(const uint8_t *buf) { return (buf[0] == 0xff && buf[1] == 0xd8); }
 
-int liveview_render_frame(JNIEnv *env, struct SurfacePriv *priv, void *buffer, unsigned int size) {
+int liveview_render_frame(JNIEnv *env, struct SurfacePriv *priv, const void *buffer, unsigned int size) {
 	ANativeWindow *window = priv->window;
 	if (window == NULL) {
 		__android_log_write(ANDROID_LOG_ERROR, "liveview", "surface handle is null");

@@ -37,7 +37,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import fantasyfudge.app.generated.resources.*
 import dev.danielc.fudge.BackgroundViewModel
-import dev.danielc.fudge.FileHandle
+import dev.danielc.fudge.ObjectHandle
 import dev.danielc.fudge.FileMetadata
 import dev.danielc.fudge.MimeType
 import dev.danielc.fudge.StorageInfo
@@ -48,7 +48,7 @@ import kotlinx.coroutines.flow.update
 import org.jetbrains.compose.resources.painterResource
 
 data class LiveFeedItem(
-    val handle: FileHandle,
+    val handle: ObjectHandle,
     val metadata: FileMetadata? = null,
     val progress: Int? = null,
     val hasFinished: Boolean = false,
@@ -66,13 +66,13 @@ open class LiveFeedModel: BackgroundViewModel() {
     fun setItem(item: LiveFeedItem) {
         items.update { it + item }
     }
-    fun updateItem(handle: FileHandle, path: String?, hasFinished: Boolean, progress: Int? = null) {
+    fun updateItem(handle: ObjectHandle, path: String?, hasFinished: Boolean, progress: Int? = null) {
         items.update {
             it.map { item -> if (item.handle == handle) item.copy(savedPath = path, hasFinished = hasFinished, progress = progress) else item }
         }
     }
-    fun hasFinished(handle: FileHandle): Boolean { return items.value.find { it.handle.index == handle.index }?.hasFinished ?: false }
-    fun getItem(handle: FileHandle): LiveFeedItem? {
+    fun hasFinished(handle: ObjectHandle): Boolean { return items.value.find { it.handle.index == handle.index }?.hasFinished ?: false }
+    fun getItem(handle: ObjectHandle): LiveFeedItem? {
         return items.value.find { it.handle.index == handle.index }
     }
 }
@@ -128,8 +128,8 @@ fun LiveFeed(modifier: Modifier = Modifier, model: LiveFeedModel) {
 fun PreviewLiveFeed(navController: NavHostController = rememberNavController()) {
     val model = LiveFeedModel()
     model.setStorageDevice(StorageInfo("downloads", nFiles = 5))
-    model.setItem(LiveFeedItem(FileHandle(0), FileMetadata("DSC101.JPG"), progress = 100, hasFinished = true))
-    model.setItem(LiveFeedItem(FileHandle(1), null, 40))
+    model.setItem(LiveFeedItem(ObjectHandle(0), FileMetadata("DSC101.JPG"), progress = 100, hasFinished = true))
+    model.setItem(LiveFeedItem(ObjectHandle(1), null, 40))
     
     return FudgeTheme {
         Scaffold(

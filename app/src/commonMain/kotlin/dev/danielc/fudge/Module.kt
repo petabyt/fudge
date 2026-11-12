@@ -5,7 +5,6 @@ import dev.danielc.fudge.screens.ConnectingScreenModel
 import dev.danielc.fudge.screens.ConsoleModel
 import dev.danielc.fudge.screens.DashboardModel
 import dev.danielc.fudge.screens.FileDownloader
-import dev.danielc.fudge.screens.GalleryObjectReference
 import dev.danielc.fudge.screens.GalleryViewModel
 import dev.danielc.fudge.screens.LiveFeedItem
 import dev.danielc.fudge.screens.LiveFeedModel
@@ -57,9 +56,9 @@ data class ModuleJob(
 
 class ModuleBackupModel(val module: ModuleInstance): BackupModel(module.currentFilesystem) {
     override fun cancelJob(job: ModuleJob) { module.cancelJob(job) }
-    override suspend fun fulfillFileMetadata(index: Int) { module.galleryViewModel.fulfillMetadata(GalleryObjectReference(index)) }
+    override suspend fun fulfillFileMetadata(index: Int) { module.galleryViewModel.fulfillMetadata(ObjectHandle(index)) }
     override suspend fun downloadFile(index: Int, update: (ModuleJob) -> Unit) {
-        val handle = FileHandle(index, module.galleryViewModel.currentFilesystemStateFlow.value?.storageName)
+        val handle = ObjectHandle(index, module.galleryViewModel.currentFilesystemStateFlow.value?.storageName)
         module.galleryViewModel.updateDownloader(handle)
         val downloader = module.galleryViewModel.downloader
         module.getFileContents(file = handle, onUpdate = {
@@ -97,10 +96,10 @@ class ModuleLiveFeedModel(val module: ModuleInstance): LiveFeedModel() {
             }
         }
     }
-    fun addFileMetadata(file: FileHandle, v: FileMetadata?)  {
+    fun addFileMetadata(file: ObjectHandle, v: FileMetadata?)  {
         setItem(LiveFeedItem(file, v))
     }
-    fun setFileContents(file: FileHandle, data: ByteArray?, offset: Long, totalSize: Long) {
+    fun setFileContents(file: ObjectHandle, data: ByteArray?, offset: Long, totalSize: Long) {
         val item = getItem(file)
         if (downloader?.file != file) {
             downloader = object : FileDownloader(
@@ -131,27 +130,31 @@ class ModuleLiveFeedModel(val module: ModuleInstance): LiveFeedModel() {
 class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: ViewerModel): GalleryViewModel(currentFilesystem = module.currentFilesystem) {
     var downloader: FileDownloader? = null
     var viewerDownloadJob: ModuleJob? = null
-    override suspend fun fulfillThumbnail(file: GalleryObjectReference) {
-        if (module.getFileThumbnail(file = FileHandle(file.index, null)).failed) {
-            updateThumbnail(file.index, thumbData = null)
+    override suspend fun fulfillThumbnail(file: ObjectHandle) {
+        if (module.getFileThumbnail(file = file).failed) {
+            updateThumbnail(file, thumbData = null)
         }
     }
 
-    override suspend fun fulfillMetadata(file: GalleryObjectReference) {
-        if (module.getFileMetadata(file = FileHandle(file.index, null)).failed) {
-            updateMetadata(file.index, null)
+    override suspend fun fulfillMetadata(file: ObjectHandle) {
+        if (module.getFileMetadata(file = file).failed) {
+            updateMetadata(file, null)
         }
     }
 
-    override fun toggleStorageDevice() {
-        for (dev in module.storageDevices.value) {
-            if (dev.storageName != module.currentFilesystem.value?.storageName) {
-                switchStorageDevice(dev)
+    override suspend fun toggleStorageDevice() {
+        filesystemMutex.withLock {
+            for (dev in module.storageDevices.value) {
+                if (dev.storageName != module.currentFilesystem.value?.storageName) {
+                    // TODO: Stow cached thumbnails/metadata in module
+                    module.switchStorageDevice({}, dev.storageName)
+                    switchStorageDevice(dev)
+                }
             }
         }
     }
 
-    fun updateDownloader(file: FileHandle) {
+    fun updateDownloader(file: ObjectHandle) {
         val md = module.galleryViewModel.getMetadata(file)
         downloader = object : FileDownloader(file, md?.filename ?: "unknown${file.index}.jpg", MimeType.JPEG.mediaTypeString, module.viewerViewModel.dir) {
             private var isNotUpdatingDownloadSpeed: Boolean = false
@@ -163,7 +166,7 @@ class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: Vi
             }
             override fun onSaved(handle: FileLayer.Handle) {
                 module.viewerViewModel.setHasSaved(true)
-                module.galleryViewModel.setHasSaved(file.index, true)
+                module.galleryViewModel.setHasSaved(file, true)
                 module.addDownloadedItem(handle.getPath(), null)
             }
             override fun onAutomaticallySaved() {
@@ -181,7 +184,7 @@ class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: Vi
         }
     }
 
-    fun goToViewer(file: FileHandle) {
+    fun goToViewer(file: ObjectHandle) {
         CoroutineScope(Dispatchers.IO).launch {
             val galleryState = currentFilesystemStateFlow.value
             viewerViewModel.clear()
@@ -352,19 +355,24 @@ abstract class ModuleBase: NativeModule() {
             onFindConnection(job.id)
         }
     }
-    suspend fun getFileMetadata(onUpdate: JobUpdateCallback = {}, file: FileHandle): PakReturnCode {
+    suspend fun getFileMetadata(onUpdate: JobUpdateCallback = {}, file: ObjectHandle): PakReturnCode {
         return withJob(onUpdate) { job ->
             onRequestFileMetadata(job.id, file)
         }
     }
-    suspend fun getFileThumbnail(onUpdate: JobUpdateCallback = {}, file: FileHandle): PakReturnCode {
+    suspend fun getFileThumbnail(onUpdate: JobUpdateCallback = {}, file: ObjectHandle): PakReturnCode {
         return withJob(onUpdate) { job ->
             onRequestFileThumbnail(job.id, file)
         }
     }
-    suspend fun getFileContents(onUpdate: JobUpdateCallback = {}, file: FileHandle): PakReturnCode {
+    suspend fun getFileContents(onUpdate: JobUpdateCallback = {}, file: ObjectHandle): PakReturnCode {
         return withJob(onUpdate) { job ->
             onRequestFileContents(job.id, file)
+        }
+    }
+    suspend fun switchStorageDevice(onUpdate: JobUpdateCallback = {}, name: String): PakReturnCode {
+        return withJob(onUpdate) { job ->
+            onSwitchStorageDevice(job.id, name)
         }
     }
     suspend fun tryConnectWiFi(net: WiFi.Adapter, saved: SavedDeviceEntity?, onUpdate: JobUpdateCallback = {}): PakReturnCode {
@@ -583,7 +591,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
         homeModelView.sendUiEvent(UiEvent(type = UiEvent.UiEventType.SNACKBAR_MESSAGE, message = s))
     }
     @CalledFromNative
-    fun getMetadata(file: FileHandle): FileMetadata? {
+    fun getMetadata(file: ObjectHandle): FileMetadata? {
         return galleryViewModel.getMetadata(file)
     }
     @CalledFromNative
@@ -635,8 +643,8 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
         return false
     }
     @CalledFromNative
-    fun addFileMetadata(file: FileHandle, v: FileMetadata?) {
-        galleryViewModel.updateMetadata(file.index, v)
+    fun addFileMetadata(file: ObjectHandle, v: FileMetadata?) {
+        galleryViewModel.updateMetadata(file, v)
         val dev = getStorageDevice(file.storageName)
         if (dev != null && dev.isLiveFeedMedium) {
             liveFeedModel.addFileMetadata(file, v)
@@ -651,7 +659,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
         }
     }
     @CalledFromNative
-    fun setFileContents(file: FileHandle, data: ByteArray?, offset: Long, totalSize: Long) {
+    fun setFileContents(file: ObjectHandle, data: ByteArray?, offset: Long, totalSize: Long) {
         val dev = getStorageDevice(file.storageName)
         if (dev != null && dev.isLiveFeedMedium) {
             liveFeedModel.setFileContents(file, data, offset, totalSize)
@@ -659,8 +667,8 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
         galleryViewModel.downloader?.setFileContents(data, offset, totalSize)
     }
     @CalledFromNative
-    fun addFileThumbnail(file: FileHandle, data: ByteArray?) {
-        galleryViewModel.updateThumbnail(file.index, data)
+    fun addFileThumbnail(file: ObjectHandle, data: ByteArray?) {
+        galleryViewModel.updateThumbnail(file, data)
     }
     @CalledFromNative
     fun setStorageInfo(info: StorageInfo) {

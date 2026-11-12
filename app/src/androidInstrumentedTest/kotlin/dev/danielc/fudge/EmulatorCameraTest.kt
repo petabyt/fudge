@@ -1,9 +1,7 @@
 package dev.danielc.fudge
 
-import android.Manifest
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.rule.GrantPermissionRule
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.fail
 import org.junit.Rule
@@ -12,15 +10,6 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class EmulatorCameraTest {
-//    @get:Rule(order = 0)
-//    val permissions: GrantPermissionRule = GrantPermissionRule.grant(
-//        Manifest.permission.BLUETOOTH_SCAN,
-//        Manifest.permission.BLUETOOTH_CONNECT,
-//        Manifest.permission.NEARBY_WIFI_DEVICES,
-//        Manifest.permission.ACCESS_WIFI_STATE,
-//        Manifest.permission.CHANGE_WIFI_STATE,
-//    )
-
     @get:Rule(order = 1)
     val activityRule = ActivityScenarioRule(MainActivity::class.java)
 
@@ -51,6 +40,10 @@ class EmulatorCameraTest {
             for (s in screens) {
                 runBlocking {
                     mod.switchScreen(s, true, {})
+                    if (s == Screen.FILE_GALLERY) {
+                        // Pull in files for a little bit
+                        Thread.sleep(1000)
+                    }
                 }
             }
         }

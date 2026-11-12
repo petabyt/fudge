@@ -2,7 +2,7 @@ package dev.danielc.fudge.screens
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import dev.danielc.fudge.FileHandle
+import dev.danielc.fudge.ObjectHandle
 import dev.danielc.fudge.FileLayer
 import dev.danielc.fudge.SortBy
 import dev.danielc.fudge.StorageInfo
@@ -32,7 +32,7 @@ class LocalGalleryViewModel: GalleryViewModel(isRemoteFilesystem = false) {
                 objectListSortedOrder = SortBy.NEWEST_FIRST
             ))
             for (i in files.indices) {
-                updateMetadata(i, files[i].metadata)
+                updateMetadata(ObjectHandle(i, currentFilesystemStateFlow.value?.storageName), files[i].metadata)
             }
             enqueueObjects((0..100).toList())
         } catch (_: Exception) {
@@ -40,17 +40,17 @@ class LocalGalleryViewModel: GalleryViewModel(isRemoteFilesystem = false) {
         }
     }
 
-    override suspend fun fulfillThumbnail(file: GalleryObjectReference) {
-        updateThumbnail(file.index, FileLayer.getMediaThumbnail(files[file.index]))
+    override suspend fun fulfillThumbnail(file: ObjectHandle) {
+        updateThumbnail(file, FileLayer.getMediaThumbnail(files[file.index]))
     }
 
-    override suspend fun fulfillMetadata(file: GalleryObjectReference) {
-        updateMetadata(file.index, files[file.index].metadata)
+    override suspend fun fulfillMetadata(file: ObjectHandle) {
+        updateMetadata(file, files[file.index].metadata)
     }
 
-    override fun itemClicked(ref: GalleryObjectReference) {
+    override fun itemClicked(ref: ObjectHandle) {
         val file = files[ref.index]
-        val handle = FileHandle(ref.index)
+        val handle = ObjectHandle(ref.index)
         viewer.update(handle, files.size, getThumbnail(handle, -1), getThumbnail(handle, 0), getThumbnail(handle, 1))
         viewer.updateMetadata(file.metadata)
         if (file.metadata.getMimeType().isVideo()) {
@@ -72,10 +72,10 @@ class LocalGalleryViewModel: GalleryViewModel(isRemoteFilesystem = false) {
 }
 
 @Composable
-fun LocalGallery(onItemClick: (Int) -> Unit, modifier: Modifier, model: LocalGalleryViewModel?) {
+fun LocalGallery(onItemClick: (ObjectHandle) -> Unit, modifier: Modifier, model: LocalGalleryViewModel?) {
     if (model != null) {
-        Gallery(modifier, model, onItemClick = { i ->
-            onItemClick(i)
+        Gallery(modifier, model, onItemClick = { obj ->
+            onItemClick(obj)
         })
     }
 }

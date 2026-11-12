@@ -117,14 +117,14 @@ void pak_rt_fatal_error(struct PakModule *mod, const char *fmt, ...) {
 	(*env)->PopLocalFrame(env, NULL);
 }
 
-void pak_error(const char *fmt, ...) {
+void pak_error_log(const char *fmt, ...) {
 	char buffer[512] = {0};
 	va_list args;
 	va_start(args, fmt);
 	vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
 
-	__android_log_write(ANDROID_LOG_ERROR, "pak_error", buffer);
+	__android_log_write(ANDROID_LOG_ERROR, "pak_error_log", buffer);
 }
 
 void pak_abort(const char *fmt, ...) {
@@ -138,10 +138,10 @@ void pak_abort(const char *fmt, ...) {
 	abort();
 }
 
-static jobject create_filehandle(JNIEnv *env, const struct PakFileHandle *file) {
+static jobject create_filehandle(JNIEnv *env, const struct PakObjectHandle *file) {
 	if (file == NULL) return NULL;
 	(*env)->PushLocalFrame(env, 10);
-	jclass filehandle_c = (*env)->FindClass(env, "dev/danielc/fudge/FileHandle");
+	jclass filehandle_c = (*env)->FindClass(env, "dev/danielc/fudge/ObjectHandle");
 	jmethodID constructor = (*env)->GetMethodID(env, filehandle_c, "<init>", "(ILjava/lang/String;Ljava/lang/String;)V");
 	jobject handle_o = (*env)->NewObject(env, filehandle_c, constructor,
 		file->index_in_view,
@@ -253,31 +253,31 @@ int pak_rt_set_storage_info(struct PakModule *mod, const char *name, struct PakS
 	return 0;
 }
 
-int pak_rt_add_file_contents(struct PakModule *mod, struct PakFileHandle *file, void *image_data, unsigned int length, uint64_t offset, uint64_t total_size) {
+int pak_rt_add_file_contents(struct PakModule *mod, struct PakObjectHandle *file, const void *data, unsigned int length, uint64_t offset, uint64_t total_size) {
 	JNIEnv *env = get_jni_env();
 	if (file->storage_name != NULL && !strcmp(file->storage_name, "liveview")) {
-		return liveview_render_frame(env, &mod->rt->liveview, image_data, length);
+		return liveview_render_frame(env, &mod->rt->liveview, data, length);
 	}
 
 	(*env)->PushLocalFrame(env, 10);
 	jobject handle_o = create_filehandle(env, file);
 	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
-	jmethodID set_storage_info = (*env)->GetMethodID(env, module_c, "setFileContents", "(Ldev/danielc/fudge/FileHandle;[BJJ)V");
+	jmethodID set_storage_info = (*env)->GetMethodID(env, module_c, "setFileContents", "(Ldev/danielc/fudge/ObjectHandle;[BJJ)V");
 
-	jbyteArray image_data_o = (image_data == NULL || length == 0) ? NULL : (*env)->NewByteArray(env, (jsize)length);
-	if (image_data_o != NULL) (*env)->SetByteArrayRegion(env, image_data_o, 0, (jsize)length, (const jbyte *)image_data);
+	jbyteArray image_data_o = (data == NULL || length == 0) ? NULL : (*env)->NewByteArray(env, (jsize)length);
+	if (image_data_o != NULL) (*env)->SetByteArrayRegion(env, image_data_o, 0, (jsize)length, (const jbyte *)data);
 
 	(*env)->CallVoidMethod(env, mod->rt->obj, set_storage_info, handle_o, image_data_o, (jlong)offset, (jlong)total_size);
 	(*env)->PopLocalFrame(env, NULL);
 	return 0;
 }
 
-int pak_rt_add_file_thumbnail(struct PakModule *mod, struct PakFileHandle *file, void *image_data, unsigned int length) {
+int pak_rt_add_file_thumbnail(struct PakModule *mod, struct PakObjectHandle *file, const void *image_data, unsigned int length) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	jobject handle_o = create_filehandle(env, file);
 	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
-	jmethodID set_storage_info = (*env)->GetMethodID(env, module_c, "addFileThumbnail", "(Ldev/danielc/fudge/FileHandle;[B)V");
+	jmethodID set_storage_info = (*env)->GetMethodID(env, module_c, "addFileThumbnail", "(Ldev/danielc/fudge/ObjectHandle;[B)V");
 
 	jbyteArray image_data_o = image_data == NULL ? NULL : (*env)->NewByteArray(env, (jsize)length);
 	if (image_data_o != NULL) (*env)->SetByteArrayRegion(env, image_data_o, 0, (jsize)length, (const jbyte *)image_data);
@@ -364,7 +364,7 @@ int pak_rt_set_widget(struct PakModule *mod, const char *name, const struct PakW
 	return 0;
 }
 
-int pak_rt_add_file_metadata(struct PakModule *mod, struct PakFileHandle *file, const struct PakFileMetadata *metadata) {
+int pak_rt_add_file_metadata(struct PakModule *mod, struct PakObjectHandle *file, const struct PakFileMetadata *metadata) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 
@@ -372,7 +372,7 @@ int pak_rt_add_file_metadata(struct PakModule *mod, struct PakFileHandle *file, 
 	jobject metadata_o = create_filemetadata(env, metadata);
 
 	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
-	jmethodID method = (*env)->GetMethodID(env, module_c, "addFileMetadata", "(Ldev/danielc/fudge/FileHandle;Ldev/danielc/fudge/FileMetadata;)V");
+	jmethodID method = (*env)->GetMethodID(env, module_c, "addFileMetadata", "(Ldev/danielc/fudge/ObjectHandle;Ldev/danielc/fudge/FileMetadata;)V");
 	(*env)->CallVoidMethod(env, mod->rt->obj, method, handle_o, metadata_o);
 
 	(*env)->PopLocalFrame(env, NULL);
@@ -419,12 +419,12 @@ const char *pak_rt_get_setup_option(struct PakModule *mod) {
 	return mod->rt->setup_option;
 }
 
-struct PakFileMetadata *pak_rt_get_metadata(struct PakModule *mod, struct PakFileHandle *file) {
+struct PakFileMetadata *pak_rt_get_metadata(struct PakModule *mod, struct PakObjectHandle *file) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	jobject handle_o = create_filehandle(env, file);
 	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
-	jmethodID method = (*env)->GetMethodID(env, module_c, "getMetadata", "(Ldev/danielc/fudge/FileHandle;)Ldev/danielc/fudge/FileMetadata;");
+	jmethodID method = (*env)->GetMethodID(env, module_c, "getMetadata", "(Ldev/danielc/fudge/ObjectHandle;)Ldev/danielc/fudge/FileMetadata;");
 	jobject md_o = (*env)->CallObjectMethod(env, mod->rt->obj, method, handle_o);
 	if (md_o == NULL) {
 		(*env)->PushLocalFrame(env, 10);
@@ -475,7 +475,7 @@ int pak_rt_add_user_instruction(struct PakModule *mod, const char *message) {
 	return 0;
 }
 
-int pak_rt_add_folder_info(struct PakModule *mod, const char *storage_name, const char *folder_path, unsigned int n_items, enum PakSortedBy sorted_by) {
+int pak_rt_add_folder_info(struct PakModule *mod,struct PakObjectHandle *file, unsigned int n_items, enum PakSortedBy sorted_by) {
 	// TODO:
 	return -1;
 }

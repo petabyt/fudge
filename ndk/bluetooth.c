@@ -249,7 +249,7 @@ int pak_bt_unref_device(struct PakBt *ctx, struct PakBtDevice *device) {
 	return 0;
 }
 
-int pak_bt_device_connect(struct PakBt *ctx, struct PakBtDevice *device) {
+int pak_bt_device_connect(struct PakBt *ctx, struct PakBtDevice *device, int blocking) {
 	//if (device->is_classic) return PAK_ERR_NON_FATAL;
 	return setup_listener(device);
 }
@@ -262,7 +262,7 @@ int pak_bt_device_disconnect(struct PakBt *ctx, struct PakBtDevice *device) {
 	return 0;
 }
 
-int pak_bt_device_create_bond(struct PakBt *ctx, struct PakBtDevice *device) {
+int pak_bt_device_create_bond(struct PakBt *ctx, struct PakBtDevice *device, int blocking) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	int rc = (*env)->CallIntMethod(env, device->priv->device, (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "createBond", "()I"));
@@ -270,7 +270,7 @@ int pak_bt_device_create_bond(struct PakBt *ctx, struct PakBtDevice *device) {
 	return rc;
 }
 
-struct PakBtSocket *pak_bt_connect_to_service_channel(struct PakBt *ctx, struct PakBtDevice *dev, const char *uuid) {
+struct PakBtSocket * pak_bt_connect_to_service_channel(struct PakBt *ctx, struct PakBtDevice *dev, const char *uuid, int flags) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	jclass device = (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device");

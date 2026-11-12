@@ -59,9 +59,10 @@ actual open class NativeModule {
     @Synchronized actual external fun onIdleTick(usSinceLastTick: Int): Int
     @Synchronized actual external fun onDisconnect(): Int
     @Synchronized actual external fun onSwitchScreen(oldScreen: Int, newScreen: Int, job: Int): Int
-    @Synchronized actual external fun onRequestFileContents(job: Int, file: FileHandle): Int
-    @Synchronized actual external fun onRequestFileThumbnail(job: Int, file: FileHandle): Int
-    @Synchronized actual external fun onRequestFileMetadata(job: Int, file: FileHandle): Int
+    @Synchronized actual external fun onRequestFileContents(job: Int, file: ObjectHandle): Int
+    @Synchronized actual external fun onRequestFileThumbnail(job: Int, file: ObjectHandle): Int
+    @Synchronized actual external fun onRequestFileMetadata(job: Int, file: ObjectHandle): Int
+    @Synchronized actual external fun onSwitchStorageDevice(job: Int, name: String): Int
     @Synchronized actual external fun onRunCommand(job: Int, arg0: String?, arg1: String?, arg2: String?, arg3: String?): Int
     @Synchronized actual external fun onPropChanged(job: Int, pane: Widget): Int
     @Synchronized actual external fun init(): Int

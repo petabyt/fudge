@@ -63,7 +63,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import dev.danielc.fudge.BackgroundViewModel
-import dev.danielc.fudge.FileHandle
+import dev.danielc.fudge.ObjectHandle
 import dev.danielc.fudge.FileLayer
 import dev.danielc.fudge.FileMetadata
 import dev.danielc.fudge.MimeType
@@ -103,7 +103,7 @@ private fun painterToImageBitmap(
 }
 
 data class ViewerState(
-    val handle: FileHandle,
+    val handle: ObjectHandle,
     val numberOfItems: Int,
     val metadata: FileMetadata? = null,
     val isLoading: Boolean = true,
@@ -121,7 +121,7 @@ data class ViewerState(
     val hasSaved: Boolean = false,
 )
 
-open class FileDownloader(val file: FileHandle, val filename: String, val mimeType: String? = null, val dir: FileLayer.Directory = FileLayer.Directory()) {
+open class FileDownloader(val file: ObjectHandle, val filename: String, val mimeType: String? = null, val dir: FileLayer.Directory = FileLayer.Directory()) {
     private var temporaryBuffer: ByteArray? = null
     private var fileHandle: FileLayer.Handle? = null
     private var fileTotalSize: Long? = null
@@ -270,7 +270,7 @@ class ViewerModel(val showSaveButton: Boolean = true, val showLoadDialog: Boolea
         }
     }
 
-    fun update(file: FileHandle, numberOfItems: Int, left: ImageBitmap? = null, main: ImageBitmap? = null, right: ImageBitmap? = null) {
+    fun update(file: ObjectHandle, numberOfItems: Int, left: ImageBitmap? = null, main: ImageBitmap? = null, right: ImageBitmap? = null) {
         _viewerState.update {
             ViewerState(
                 handle = file,
@@ -319,7 +319,7 @@ class ViewerModel(val showSaveButton: Boolean = true, val showLoadDialog: Boolea
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Viewer(modifier: Modifier = Modifier, state: ViewerState, switchTo: (Int) -> Unit, close: () -> Unit, cancel: () -> Unit) {
+fun Viewer(modifier: Modifier = Modifier, state: ViewerState, switchTo: (ObjectHandle) -> Unit, close: () -> Unit, cancel: () -> Unit) {
     val filename = state.metadata?.filename ?: "File"
 
     if (state.isError) {
@@ -482,7 +482,7 @@ fun Viewer(modifier: Modifier = Modifier, state: ViewerState, switchTo: (Int) ->
         LaunchedEffect(state) {
             snapshotFlow { pagerState.currentPage }.collect { page ->
                 if (page != state.handle.index) {
-                    switchTo(page)
+                    switchTo(state.handle.copy(index = page))
                 }
             }
         }
@@ -536,7 +536,7 @@ fun PreviewViewer(navController: NavController = rememberNavController()) {
     val painter = painterResource(Res.drawable.image)
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf(ViewerState(
-        handle = FileHandle(index = 10, "sdcard"),
+        handle = ObjectHandle(index = 10, "sdcard"),
         metadata = FileMetadata("DSCF00001.JPG", mimeType = MimeType.JPEG.mediaTypeString),
         bitmap = painterToImageBitmap(painter),
         bitmapLeft = painterToImageBitmap(painter),
@@ -549,9 +549,9 @@ fun PreviewViewer(navController: NavController = rememberNavController()) {
         currentDownloadStatusMessage = "Switching...",
         errorMessage = "BUG: Failed to decode, blah blah blah",
     )) }
-    ViewerScreen(state, switchTo = { i ->
+    ViewerScreen(state, switchTo = { obj ->
         state = state.copy(
-            handle = state.handle.copy(index = i),
+            handle = obj,
             currentDownloadProgress = 0,
             isLoading = true
         )
@@ -569,7 +569,7 @@ fun PreviewViewer(navController: NavController = rememberNavController()) {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-fun ViewerScreen(state: ViewerState?, switchTo: (Int) -> Unit, close: () -> Unit, cancel: () -> Unit = {}, save: () -> Unit = {}, share: () -> Unit = {}) {
+fun ViewerScreen(state: ViewerState?, switchTo: (ObjectHandle) -> Unit, close: () -> Unit, cancel: () -> Unit = {}, save: () -> Unit = {}, share: () -> Unit = {}) {
     return FudgeTheme {
         BackHandler {
             close()

@@ -239,15 +239,15 @@ Java_dev_danielc_fudge_NativeModule_onSwitchScreen(JNIEnv *env, jobject thiz, ji
 
 struct FileHandleWrapper {
 	jobject storagename_o;
-	struct PakFileHandle handle;
+	struct PakObjectHandle handle;
 };
 
 static struct FileHandleWrapper get_filehandle(JNIEnv *env, jobject file) {
-	jclass filehandle_class = (*env)->FindClass(env, "dev/danielc/fudge/FileHandle");
+	jclass filehandle_class = (*env)->FindClass(env, "dev/danielc/fudge/ObjectHandle");
 	jfieldID storagename_f = (*env)->GetFieldID(env, filehandle_class, "storageName", "Ljava/lang/String;");
 	jfieldID index_f = (*env)->GetFieldID(env, filehandle_class, "index", "I");
 	jstring storagename_o = (*env)->GetObjectField(env, file, storagename_f);
-	const char *storagename_s = NULL;
+	const char *storagename_s = "";
 	if (storagename_o != NULL) storagename_s = (*env)->GetStringUTFChars(env, storagename_o, NULL);
 
 	return (struct FileHandleWrapper){
@@ -304,8 +304,7 @@ Java_dev_danielc_fudge_NativeModule_onRequestFileContents(JNIEnv *env, jobject t
 }
 
 JNIEXPORT jint JNICALL
-Java_dev_danielc_fudge_NativeModule_onRequestFileMetadata(JNIEnv *env, jobject thiz, jint job,
-														   jobject file) {
+Java_dev_danielc_fudge_NativeModule_onRequestFileMetadata(JNIEnv *env, jobject thiz, jint job, jobject file) {
 	struct TempStruct info;
 	struct PakModule *mod = get_mod(env, thiz, &info);
 
@@ -314,9 +313,27 @@ Java_dev_danielc_fudge_NativeModule_onRequestFileMetadata(JNIEnv *env, jobject t
 	struct FileHandleWrapper wrapper = get_filehandle(env, file);
 
 	int rc = 0;
-	if (mod->on_request_file_metadata) rc = mod->on_request_file_metadata(mod, job, &wrapper.handle);
+	if (mod->on_request_object_info) rc = mod->on_request_object_info(mod, job, &wrapper.handle);
 
 	free_wrapper(env, &wrapper);
+	(*env)->PopLocalFrame(env, NULL);
+
+	release_mod(env, &info);
+	return rc;
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_danielc_fudge_NativeModule_onSwitchStorageDevice(JNIEnv *env, jobject thiz, jint job, jstring name_o) {
+	struct TempStruct info;
+	struct PakModule *mod = get_mod(env, thiz, &info);
+	(*env)->PushLocalFrame(env, 10);
+
+	const char *name = (*env)->GetStringUTFChars(env, name_o, NULL);
+
+	int rc = 0;
+	if (mod->on_switch_storage_device) rc = mod->on_switch_storage_device(mod, job, name);
+
+	(*env)->ReleaseStringUTFChars(env, name_o, name);
 	(*env)->PopLocalFrame(env, NULL);
 
 	release_mod(env, &info);
@@ -485,7 +502,7 @@ Java_dev_danielc_fudge_NativeModule_nativeLiveviewThread(JNIEnv *env, jobject th
     struct timeval start, end;
 	while (!atomic_load(&mod->rt->liveview.liveview_cancel)) {
 		gettimeofday(&start, NULL);
-		if (mod->on_request_liveview_frame(mod, -1, &(struct PakFileHandle){
+		if (mod->on_request_liveview_frame(mod, -1, &(struct PakObjectHandle){
 			.storage_name = "liveview",
 		})) break;
         gettimeofday(&end, NULL);

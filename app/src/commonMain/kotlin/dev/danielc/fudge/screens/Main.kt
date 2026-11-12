@@ -501,10 +501,10 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
                     LaunchedEffect(Unit) {
                         FileLayer.requestLegacyPermissions()
                     }
-                    LocalGallery(onItemClick = { i ->
+                    LocalGallery(onItemClick = { obj ->
                         navController.navigate("local-viewer")
                         CoroutineScope(Dispatchers.IO).launch {
-                            Runtime.localGalleryViewModel.itemClicked(GalleryObjectReference(i))
+                            Runtime.localGalleryViewModel.itemClicked(obj)
                         }
                     }, Modifier, Runtime.localGalleryViewModel)
                 }
@@ -583,9 +583,9 @@ fun MainNav(navController: NavHostController) {
         }
         composable("local-viewer") {
             val state by Runtime.localGalleryViewModel.viewer.viewerState.collectAsStateWithLifecycle()
-            ViewerScreen(state, { i ->
+            ViewerScreen(state, { obj ->
                 CoroutineScope(Dispatchers.IO).launch {
-                    Runtime.localGalleryViewModel.itemClicked(GalleryObjectReference(i))
+                    Runtime.localGalleryViewModel.itemClicked(obj)
                 }
             }, close = {
                 Runtime.localGalleryViewModel.viewer.clear()

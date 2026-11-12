@@ -45,7 +45,7 @@ jobject pak_wifi_ap_filter_to_jobject(JNIEnv *env, struct PakWiFiApFilter *filte
 		filter->ssid_pattern ? (*env)->NewStringUTF(env, filter->ssid_pattern) : NULL,
 		filter->bssid ? (*env)->NewStringUTF(env, filter->bssid) : NULL,
 		filter->password ? (*env)->NewStringUTF(env, filter->password) : NULL,
-		 (jint)filter->band,
+		(jint)filter->band,
 		(jboolean)filter->is_hidden
 	);
 }
@@ -95,7 +95,8 @@ struct PakWiFiAp *pak_wifi_get_connected_ap(struct PakNet *ctx, struct PakWiFiAd
 	return NULL;
 }
 
-int pak_wifi_connect_to_ap(struct PakNet *ctx, struct PakWiFiAdapter *adapter, struct PakWiFiAp *ap, const char *password) {
+int pak_wifi_connect_to_ap(struct PakNet *ctx, struct PakWiFiAdapter *adapter, struct PakWiFiAp *ap,
+						   const char *password, int blocking) {
 	return -1;
 }
 

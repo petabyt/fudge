@@ -34,6 +34,6 @@ struct PakBtDevice *pak_bt_device_from_jobject(JNIEnv *env, struct PakBt *ctx, j
 struct PakWiFiAdapter *pak_wifi_adapter_from_jobject(JNIEnv *env, jobject wifi_adapter);
 libusb_device *pak_libusb_device_from_jobject(JNIEnv *env, jobject dev_o);
 
-int liveview_render_frame(JNIEnv *env, struct SurfacePriv *priv, void *buffer, unsigned int size);
+int liveview_render_frame(JNIEnv *env, struct SurfacePriv *priv, const void *buffer, unsigned int size);
 
 #endif

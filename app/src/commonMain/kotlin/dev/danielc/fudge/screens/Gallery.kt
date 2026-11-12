@@ -45,6 +45,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -75,7 +76,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import fantasyfudge.app.generated.resources.*
 import dev.danielc.fudge.BackgroundViewModel
-import dev.danielc.fudge.FileHandle
+import dev.danielc.fudge.ObjectHandle
 import dev.danielc.fudge.FileLayer
 import dev.danielc.fudge.FileMetadata
 import dev.danielc.fudge.FilesystemObject
@@ -128,11 +129,6 @@ enum class DisplayType {
     VERTICAL_TABLE,
 }
 
-data class GalleryObjectReference(
-    val index: Int,
-    // TODO: Folder
-)
-
 abstract class GalleryViewModel(
     val isRemoteFilesystem: Boolean = true,
     var isThumbnailPriority: Boolean = true,
@@ -145,8 +141,9 @@ abstract class GalleryViewModel(
     val currentFilesystemSortedList: MutableStateFlow<List<Int>> = MutableStateFlow(emptyList())
     val userSortBy = MutableStateFlow(SortBy.NEWEST_FIRST)
     // TODO: Possibly have a queue of fixed length
-    private val queue: ArrayDeque<GalleryObjectReference> = ArrayDeque()
+    private val queue: ArrayDeque<ObjectHandle> = ArrayDeque()
     private val queueMutex = Mutex()
+    internal val filesystemMutex = Mutex()
 
     init {
         if (currentFilesystem.value != null) sortObjectList()
@@ -159,20 +156,20 @@ abstract class GalleryViewModel(
         stop()
     }
 
-    fun getMetadata(file: FileHandle): FileMetadata? {
+    fun getMetadata(file: ObjectHandle): FileMetadata? {
         return currentFilesystem.value?.objects?.getOrNull(file.index)?.metadata
     }
-    fun getThumbnail(file: FileHandle, offset: Int): ImageBitmap? {
+    fun getThumbnail(file: ObjectHandle, offset: Int): ImageBitmap? {
         return currentFilesystem.value?.objects?.getOrNull(file.index + offset)?.thumbnail
     }
 
     open fun onRefresh() {}
-    open fun onShare(ref: GalleryObjectReference) {}
-    open fun itemClicked(ref: GalleryObjectReference) {}
+    open fun onShare(ref: ObjectHandle) {}
+    open fun itemClicked(ref: ObjectHandle) {}
     open fun init() {}
-    open fun toggleStorageDevice() {}
-    abstract suspend fun fulfillThumbnail(file: GalleryObjectReference)
-    abstract suspend fun fulfillMetadata(file: GalleryObjectReference)
+    open suspend fun toggleStorageDevice() {}
+    abstract suspend fun fulfillThumbnail(file: ObjectHandle)
+    abstract suspend fun fulfillMetadata(file: ObjectHandle)
 
     companion object {
         fun objectIsFulfilled(obj: FilesystemObject?): Boolean {
@@ -196,7 +193,7 @@ abstract class GalleryViewModel(
         }
     }
 
-    private suspend fun checkObject(obj: FilesystemObject, ref: GalleryObjectReference): Boolean {
+    private suspend fun checkObject(obj: FilesystemObject, ref: ObjectHandle): Boolean {
         obj.lastUpdated = TimeSource.Monotonic.markNow()
         if (obj.thumbnail == null && !obj.invalidThumbnail) {
             fulfillThumbnail(ref)
@@ -223,14 +220,14 @@ abstract class GalleryViewModel(
             // Iterate all recently checked objects fulfill them more (recently seen by user, should be priority)
             val newest = objects.sortedBy { it.lastUpdated }
             for (i in newest.indices) {
-                if (checkObject(objects[i], GalleryObjectReference(i))) return true
+                if (checkObject(objects[i], ObjectHandle(i, currentFilesystem.value?.storageName))) return true
             }
             return false
         }
         val ref = queueMutex.withLock {
-            queue.removeLast()
+            queue.removeLastOrNull()
         }
-        if (ref.index >= objects.size || ref.index < 0) return false
+        if (ref == null || ref.index >= objects.size || ref.index < 0) return false
         val obj = objects[ref.index]
         return checkObject(obj, ref)
     }
@@ -242,7 +239,9 @@ abstract class GalleryViewModel(
                 val thread = thread
                 while (thread != null && !thread.isCancelled) {
                     if (!threadIsPaused) {
-                        if (tick()) continue
+                        filesystemMutex.withLock {
+                            if (tick()) continue
+                        }
                     }
                     try {
                         delay(100.milliseconds)
@@ -284,14 +283,17 @@ abstract class GalleryViewModel(
         }
     }
 
-    private fun updateObject(i: Int, block: (FilesystemObject) -> FilesystemObject) {
+    private fun updateObject(obj: ObjectHandle, block: (FilesystemObject) -> FilesystemObject) {
+        // Is coroutine launch necessary?
         CoroutineScope(Dispatchers.IO).launch {
             currentFilesystem.update {
+                // reject if storage device has changed
+                if (obj.storageName != null && it?.storageName != obj.storageName) return@update it
                 if (it == null) it else {
                     val list = it.objects.toMutableList()
-                    while (list.size <= i) list.add(FilesystemObject())
-                    val obj = list[i]
-                    list[i] = block(obj)
+                    while (list.size <= obj.index) list.add(FilesystemObject())
+                    val fsobj = list[obj.index]
+                    list[obj.index] = block(fsobj)
                     it.copy(objects = list)
                 }
             }
@@ -299,14 +301,14 @@ abstract class GalleryViewModel(
         }
     }
 
-    fun updateThumbnail(i: Int, thumbData: ByteArray? = null) {
-        updateThumbnail(i, if (thumbData != null) NativeRuntime.decodeImageContents(thumbData, null) else null)
+    fun updateThumbnail(obj: ObjectHandle, thumbData: ByteArray? = null) {
+        updateThumbnail(obj, if (thumbData != null) NativeRuntime.decodeImageContents(thumbData, null) else null)
     }
-    fun setHasSaved(i: Int, v: Boolean) {
-        updateObject(i) { it.copy(hasSaved = v) }
+    fun setHasSaved(obj: ObjectHandle, v: Boolean) {
+        updateObject(obj) { it.copy(hasSaved = v) }
     }
-    fun toggleIsSelected(i: Int) {
-        updateObject(i) { obj ->
+    fun toggleIsSelected(obj: ObjectHandle) {
+        updateObject(obj) { obj ->
             CoroutineScope(Dispatchers.IO).launch {
                 currentFilesystem.update { it?.copy(nSelectedObjects = if (obj.selected) it.nSelectedObjects - 1 else it.nSelectedObjects + 1) }
             }
@@ -324,8 +326,8 @@ abstract class GalleryViewModel(
             sortObjectList()
         }
     }
-    fun updateMetadata(i: Int, md: FileMetadata? = null) {
-        updateObject(i) { obj ->
+    fun updateMetadata(obj: ObjectHandle, md: FileMetadata? = null) {
+        updateObject(obj) { obj ->
             if (md == null) {
                 obj.copy(metadata = null, invalidMetadata = true)
             } else {
@@ -335,8 +337,8 @@ abstract class GalleryViewModel(
             }
         }
     }
-    fun updateThumbnail(i: Int, thumb: ImageBitmap? = null) {
-        updateObject(i) { obj ->
+    fun updateThumbnail(obj: ObjectHandle, thumb: ImageBitmap? = null) {
+        updateObject(obj) { obj ->
             if (thumb == null) {
                 obj.copy(
                     thumbnail = null,
@@ -355,7 +357,7 @@ abstract class GalleryViewModel(
                     queue.removeAll { it.index == i }
                     val newIndex = currentFilesystemSortedList.value.getOrNull(i)
                     if (newIndex != null) {
-                        queue.addLast(GalleryObjectReference(newIndex))
+                        queue.addLast(ObjectHandle(newIndex, currentFilesystem.value?.storageName))
                     }
                 }
             }
@@ -488,7 +490,7 @@ private fun GalleryFile(obj: FilesystemObject, onClick: () -> Unit = {}) {
 }
 
 @Composable
-fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick: (Int) -> Unit = {}, showBackupDialog: () -> Unit = {}) {
+fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick: (ObjectHandle) -> Unit = {}, showBackupDialog: () -> Unit = {}) {
     val state by model.currentFilesystemStateFlow.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
     var isRefreshing by remember { mutableStateOf(false) }
@@ -497,6 +499,7 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
     var refreshTrigger by remember { mutableIntStateOf(0) }
     var rows by rememberSaveable { mutableIntStateOf(4) }
     val userSortBy by model.userSortBy.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     @Composable
     fun menu() {
@@ -512,7 +515,7 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
                     .padding(4.dp)
                     .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp))
                     .clickable(onClick = {
-                        model.toggleStorageDevice()
+                        scope.launch(Dispatchers.IO) { model.toggleStorageDevice() }
                         haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     })
                 ) {
@@ -631,27 +634,27 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
 
                 if (state?.objects?.isNotEmpty() ?: false) {
                     itemsIndexed(model.currentFilesystemSortedList.value) { _, entry ->
-                        val obj = state?.objects?.getOrNull(entry)
-                        if (obj == null) {}
-                        else if (displayType == DisplayType.THUMBNAILS) {
+                        val obj = state?.objects?.getOrNull(entry) ?: return@itemsIndexed
+                        val handle = ObjectHandle(entry, state?.storageName)
+                        if (displayType == DisplayType.THUMBNAILS) {
                             GalleryThumbnail(obj, onClick = {
                                 if (obj.selected) {
-                                    model.toggleIsSelected(entry)
+                                    model.toggleIsSelected(handle)
                                     haptic.performHapticFeedback(HapticFeedbackType.ToggleOff)
                                 } else if (state?.nSelectedObjects != 0) {
-                                    model.toggleIsSelected(entry)
+                                    model.toggleIsSelected(handle)
                                     haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
                                 } else {
-                                    onItemClick(entry)
+                                    onItemClick(handle)
                                     haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                                 }
                             }, longClick = {
-                                model.toggleIsSelected(entry)
+                                model.toggleIsSelected(handle)
                                 haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
                             }, scale = scale)
                         } else {
                             GalleryFile(obj, onClick = {
-                                onItemClick(entry)
+                                onItemClick(handle)
                                 haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                             })
                         }
@@ -702,8 +705,8 @@ fun PreviewGalleryScreen(navController: NavHostController = rememberNavControlle
             FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Blue)),
             FilesystemObject(FileMetadata(), thumbnail = bitmapFromColor(Color.Cyan)),
         ), storageName = "Card 2", objectListSortedOrder = SortBy.NEWEST_FIRST))) {
-        override suspend fun fulfillThumbnail(file: GalleryObjectReference) {}
-        override suspend fun fulfillMetadata(file: GalleryObjectReference) {}
+        override suspend fun fulfillThumbnail(file: ObjectHandle) {}
+        override suspend fun fulfillMetadata(file: ObjectHandle) {}
     }
     return FudgeTheme {
         Scaffold(

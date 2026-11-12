@@ -30,7 +30,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import dev.danielc.fudge.FileHandle
+import dev.danielc.fudge.ObjectHandle
 import dev.danielc.fudge.ModuleInstance
 import dev.danielc.fudge.ModuleInstanceRequest
 import dev.danielc.fudge.Screen
@@ -249,8 +249,8 @@ fun ModuleHomeScreen(module: ModuleInstance, hostNavController: NavController) {
                             showBackupDialog = false
                         })
                     }
-                    Gallery(Modifier.padding(innerPadding), module.galleryViewModel, onItemClick = { i ->
-                        module.galleryViewModel.goToViewer(FileHandle(i, storageName = module.galleryViewModel.currentFilesystemStateFlow.value?.storageName))
+                    Gallery(Modifier.padding(innerPadding), module.galleryViewModel, onItemClick = { obj ->
+                        module.galleryViewModel.goToViewer(obj)
                     }, showBackupDialog = {
                         module.backupModel.reset()
                         showBackupDialog = true
@@ -354,8 +354,8 @@ fun ModuleInstanceNav(module: ModuleInstance, backToMainScreen: () -> Unit = {})
         composable(Screen.FILE_VIEWER.strId) {
             val viewerState by module.viewerViewModel.viewerState.collectAsStateWithLifecycle()
             ViewerScreen(viewerState,
-                switchTo = { i ->
-                    module.galleryViewModel.goToViewer(FileHandle(i, viewerState?.handle?.storageName))
+                switchTo = { obj ->
+                    module.galleryViewModel.goToViewer(obj)
                 }, close = {
                     if (module.galleryViewModel.viewerDownloadJob == null) {
                         CoroutineScope(Dispatchers.IO).launch {

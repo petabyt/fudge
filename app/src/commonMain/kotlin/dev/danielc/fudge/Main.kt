@@ -94,9 +94,10 @@ expect open class NativeModule() {
     fun onIdleTick(usSinceLastTick: Int): Int
     fun onDisconnect(): Int
     fun onSwitchScreen(oldScreen: Int, newScreen: Int, job: Int): Int
-    fun onRequestFileContents(job: Int, file: FileHandle): Int
-    fun onRequestFileThumbnail(job: Int, file: FileHandle): Int
-    fun onRequestFileMetadata(job: Int, file: FileHandle): Int
+    fun onRequestFileContents(job: Int, file: ObjectHandle): Int
+    fun onRequestFileThumbnail(job: Int, file: ObjectHandle): Int
+    fun onRequestFileMetadata(job: Int, file: ObjectHandle): Int
+    fun onSwitchStorageDevice(job: Int, name: String): Int
     fun onRunCommand(job: Int, arg0: String?, arg1: String?, arg2: String?, arg3: String?): Int
     fun onPropChanged(job: Int, pane: Widget): Int
     fun init(): Int
