@@ -78,7 +78,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: nightly-apks
-          path: apks
+          path: app/build/outputs/apk
       - name: Cache Android system image
         uses: actions/cache@v4
         with:
