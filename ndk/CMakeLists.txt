@@ -48,7 +48,7 @@ option(PAK_WASM "" ${APP_WASM_SUPPORT})
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../libpak ${CMAKE_CURRENT_BINARY_DIR}/libpak)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
-    main.c
+    runtime.c
     thread.c
     module.c
     liveview.c
@@ -93,6 +93,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/dummy ${CMAKE_CURRENT_BI
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/nothing-buds ${CMAKE_CURRENT_BINARY_DIR}/nothing)
 # dummy goveelife module
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/goveelife ${CMAKE_CURRENT_BINARY_DIR}/goveelife)
-if(APP_INCLUDED_PTP2)
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/ptp2 ${CMAKE_CURRENT_BINARY_DIR}/ptp2)
-endif()
+#if(APP_INCLUDED_PTP2)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/ptp2 ${CMAKE_CURRENT_BINARY_DIR}/ptp2)
+#endif()

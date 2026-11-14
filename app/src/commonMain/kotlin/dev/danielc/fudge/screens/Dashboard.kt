@@ -85,6 +85,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Duration.Companion.milliseconds
 
 data class DashboardState(
     val widgets: List<Widget> = emptyList(),
@@ -188,7 +189,7 @@ data class PaneState(
 
 private fun cameraState(): DashboardModel {
     val manifest = ModuleManifest(name = "Fujifilm", targets = listOf(ModuleManifest.Target(deviceId = Device.PROFESSIONAL_CAMERA)))
-    return DashboardModel(manifest, DashboardState(
+    val model = DashboardModel(manifest, DashboardState(
         nameOfDevice = "Fujifilm X-T5",
         batteryLevelMain = 48,
         firmwareVersion = "4.31",
@@ -203,6 +204,8 @@ private fun cameraState(): DashboardModel {
         sizeBytes = 128000000000L,
         usedBytes = 30000000000L
     ))).asStateFlow())
+    model.updateSettingPane(Widget.MarkdownWidget(Widget.Properties("sts", "Status"), "Hello"))
+    return model
 }
 
 @PreviewTabletDark
@@ -229,11 +232,11 @@ private fun budsState(): DashboardModel {
         batteryLevelLeft = 20,
         batteryLevelRight = 70,
         widgets = listOf(
-            Widget.BooleanSetting(
+            Widget.BooleanWidget(
                 Widget.Properties("ll", "Low Lag Mode"),
                 value = true
             ),
-            Widget.BooleanSetting(
+            Widget.BooleanWidget(
                 Widget.Properties("be", "Bass Enhancement"),
                 value = false
             ),
@@ -241,7 +244,7 @@ private fun budsState(): DashboardModel {
 //               Widget.Properties("st", "Something"),
 //                value = 123
 //            ),
-            Widget.ComboboxSetting(
+            Widget.ComboboxWidget(
                 Widget.Properties("temp", "Noise Cancelling"),
                 index = 0,
                 options = listOf("Adaptive")
@@ -267,7 +270,6 @@ private fun PreviewDashboardBuds() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun DashboardPane(modifier: Modifier = Modifier, bg: Color, fg: Color, content: @Composable () -> Unit, onClick: () -> Unit) {
     CompositionLocalProvider(LocalRippleConfiguration provides FudgeRippleConfig(fg)) {
@@ -348,7 +350,7 @@ fun SettingsDialog(model: DashboardModel, close: () -> Unit = {}) {
 }
 
 @Composable
-fun DropdownDialog(close: () -> Unit = {}, comboboxSetting: Widget.ComboboxSetting, onSelect: (Int) -> Unit = {}) {
+fun DropdownDialog(close: () -> Unit = {}, comboboxSetting: Widget.ComboboxWidget, onSelect: (Int) -> Unit = {}) {
     Dialog(onDismissRequest = {
         close()
     }) {
@@ -552,13 +554,12 @@ private fun RenderPanes(panes: List<PaneState>) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
     val state by model.state.collectAsStateWithLifecycle()
     val storageDevices by model.storageDevices.collectAsStateWithLifecycle()
     var showSettings by remember { mutableStateOf(false) }
-    var selectedDropdown by remember { mutableStateOf<Widget.ComboboxSetting?>(null) }
+    var selectedDropdown by remember { mutableStateOf<Widget.ComboboxWidget?>(null) }
     val coroutineScope = rememberCoroutineScope()
     if (showSettings) {
         SettingsDialog(model, close = {
@@ -571,7 +572,7 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
         }, setting, { i ->
             model.updateSettingPane(setting.copy(index = i))
             coroutineScope.launch {
-                delay(150)
+                delay(150.milliseconds)
                 selectedDropdown = null
             }
         })
@@ -621,7 +622,7 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
 
             for (pane in state.widgets) {
                 panes += when (pane) {
-                    is Widget.BooleanSetting -> {
+                    is Widget.BooleanWidget -> {
                         PaneState(PaneState.Color.NEUTRAL, content = {
                             Text(pane.args.title, style = MaterialTheme.typography.titleSmall)
                             Switch(pane.value,
@@ -636,7 +637,7 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
                             model.updateSettingPane(pane)
                         })
                     }
-                    is Widget.Graph -> {
+                    is Widget.GraphWidget -> {
                         PaneState(PaneState.Color.NEUTRAL, content = {
                             val coords = mutableListOf<Pair<Int, Int>>()
                             for (i in pane.points.indices) coords += Pair(i, pane.points[i])
@@ -646,7 +647,7 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
                             }
                         }, fillMaxWidth = true)
                     }
-                    is Widget.ComboboxSetting -> {
+                    is Widget.ComboboxWidget -> {
                         PaneState(PaneState.Color.NEUTRAL, content = {
                             Text(pane.args.title, style = MaterialTheme.typography.titleSmall)
                             Row(Modifier
@@ -661,7 +662,7 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
                             selectedDropdown = pane
                         })
                     }
-                    is Widget.IntSetting -> {
+                    is Widget.IntWidget -> {
                         PaneState(PaneState.Color.NEUTRAL, content = {
                             TextField(
                                 leadingIcon = {
@@ -676,8 +677,13 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
                             )
                         })
                     }
-                    is Widget.SliderSetting -> {
+                    is Widget.SliderWidget -> {
                         PaneState()
+                    }
+                    is Widget.MarkdownWidget -> {
+                        PaneState(PaneState.Color.NEUTRAL, content = {
+                            Text("asdasdokasdp")
+                        })
                     }
                 }
             }

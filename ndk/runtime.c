@@ -329,18 +329,18 @@ int pak_rt_set_widget(struct PakModule *mod, const char *name, const struct PakW
 
 	jobject pane_o = NULL;
 	if (s->type == PAK_BOOLEAN) {
-		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/fudge/Widget$BooleanSetting");
+		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/fudge/Widget$BooleanWidget");
 		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/fudge/Widget$Properties;Z)V"), properties_o, (jboolean)s->u.boolv.v);
 	} else if (s->type == PAK_BUTTON) {
 		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/fudge/Widget$Button");
 		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/fudge/Widget$Properties;)V"), properties_o);
 	} else if (s->type == PAK_GRAPH) {
-		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/fudge/Widget$Graph");
+		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/fudge/Widget$GraphWidget");
 		jintArray arr = (*env)->NewIntArray(env, (jsize)s->u.graphv.n_points);
 		(*env)->SetIntArrayRegion(env, arr, 0, (jsize)s->u.graphv.n_points, (const jint *)s->u.graphv.points);
 		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/fudge/Widget$Properties;[I)V"), properties_o, arr);
 	} else if (s->type == PAK_COMBOBOX) {
-		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/fudge/Widget$ComboboxSetting");
+		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/fudge/Widget$ComboboxWidget");
 
 		int n;
 		for (n = 0; s->u.comboboxv.list[n] != NULL; n++);
@@ -476,8 +476,20 @@ int pak_rt_add_user_instruction(struct PakModule *mod, const char *message) {
 }
 
 int pak_rt_add_folder_info(struct PakModule *mod,struct PakObjectHandle *file, unsigned int n_items, enum PakSortedBy sorted_by) {
-	// TODO:
-	return -1;
+	// TODO
+	return 0;
+}
+
+int pak_rt_set_thread_policy(struct PakModule *mod, enum PakThreadPolicy v) {
+	JNIEnv *env = get_jni_env();
+	(*env)->PushLocalFrame(env, 10);
+
+	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
+	jmethodID method = (*env)->GetMethodID(env, module_c, "setThreadPolicy", "(I)V");
+	(*env)->CallVoidMethod(env, mod->rt->obj, method, (jint)v);
+
+	(*env)->PopLocalFrame(env, NULL);
+	return 0;
 }
 
 JNIEXPORT jobject JNICALL Java_dev_danielc_fudge_InstrumentedTest_getTestWiFiApFilter(JNIEnv *env, jobject thiz) {

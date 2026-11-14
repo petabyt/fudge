@@ -302,17 +302,22 @@ private fun savedDeviceEntityToInfo(saved: SavedDeviceEntity?): SavedDeviceInfo?
 
 abstract class ModuleBase: NativeModule() {
     private var jobs = mutableMapOf<Int, ModuleJob>()
-    private val jobsMutex = Mutex()
+    private val jobsMapMutex = Mutex()
     private var jobCounter = 0
+    private var threadPolicy = ModuleThreadPolicy.NO_CONCURRENT_JOBS
+    private val jobMutex = Mutex()
 
     fun cancelAllJobs() {
-        for (job in jobs) {
-            job.value.isCancelled = true
-        }
+        jobs.forEach { it.value.isCancelled = true }
+    }
+
+    @CalledFromNative
+    fun setThreadPolicy(v: Int) {
+        threadPolicy = ModuleThreadPolicy.fromCode(v)
     }
 
     suspend fun createJob(onUpdate: JobUpdateCallback): ModuleJob {
-        jobsMutex.withLock {
+        jobsMapMutex.withLock {
             val id = ++jobCounter
             val job = ModuleJob(
                 id = id,
@@ -324,7 +329,7 @@ abstract class ModuleBase: NativeModule() {
     }
 
     suspend fun closeJob(job: ModuleJob) {
-        jobsMutex.withLock {
+        jobsMapMutex.withLock {
             val key = jobs.entries.find { it.value == job }?.key
             if (key != null) {
                 jobs.remove(key)
@@ -342,7 +347,11 @@ abstract class ModuleBase: NativeModule() {
 
     suspend fun withJob(callback: JobUpdateCallback, block: (ModuleJob) -> Int): PakReturnCode {
         val job = createJob(callback)
-        var rc = PakReturnCode.fromCode(block(job))
+        var rc = if (threadPolicy == ModuleThreadPolicy.NO_CONCURRENT_JOBS) {
+            jobMutex.withLock { PakReturnCode.fromCode(block(job)) }
+        } else {
+            PakReturnCode.fromCode(block(job))
+        }
         if (job.isCancelled) rc = PakReturnCode.CANCELLED
         //;job.progressBarValue = null
         job.isFinished = true

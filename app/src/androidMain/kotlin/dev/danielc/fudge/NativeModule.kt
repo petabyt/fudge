@@ -52,22 +52,22 @@ actual open class NativeModule {
     }
 
     // TODO: @Synchronized is a temporary solution for thread safety
-    @Synchronized actual external fun onFindConnection(job: Int): Int
-    @Synchronized actual external fun onTryConnectUSB(device: USB.Device, saved: SavedDeviceInfo?, job: Int): Int
-    @Synchronized actual external fun onTryConnectWiFi(adapter: WiFi.Adapter, saved: SavedDeviceInfo?, job: Int): Int
-    @Synchronized actual external fun onTryConnectBluetooth(adapter: Bluetooth.Device, saved: SavedDeviceInfo?, job: Int): Int
-    @Synchronized actual external fun onIdleTick(usSinceLastTick: Int): Int
-    @Synchronized actual external fun onDisconnect(): Int
-    @Synchronized actual external fun onSwitchScreen(oldScreen: Int, newScreen: Int, job: Int): Int
-    @Synchronized actual external fun onRequestFileContents(job: Int, file: ObjectHandle): Int
-    @Synchronized actual external fun onRequestFileThumbnail(job: Int, file: ObjectHandle): Int
-    @Synchronized actual external fun onRequestFileMetadata(job: Int, file: ObjectHandle): Int
-    @Synchronized actual external fun onSwitchStorageDevice(job: Int, name: String): Int
-    @Synchronized actual external fun onRunCommand(job: Int, arg0: String?, arg1: String?, arg2: String?, arg3: String?): Int
-    @Synchronized actual external fun onPropChanged(job: Int, pane: Widget): Int
-    @Synchronized actual external fun init(): Int
-    @Synchronized actual external fun free()
-    @Synchronized actual external fun setSetupOptionName(name: String)
+    actual external fun onFindConnection(job: Int): Int
+    actual external fun onTryConnectUSB(device: USB.Device, saved: SavedDeviceInfo?, job: Int): Int
+    actual external fun onTryConnectWiFi(adapter: WiFi.Adapter, saved: SavedDeviceInfo?, job: Int): Int
+    actual external fun onTryConnectBluetooth(adapter: Bluetooth.Device, saved: SavedDeviceInfo?, job: Int): Int
+    actual external fun onIdleTick(usSinceLastTick: Int): Int
+    actual external fun onDisconnect(): Int
+    actual external fun onSwitchScreen(oldScreen: Int, newScreen: Int, job: Int): Int
+    actual external fun onRequestFileContents(job: Int, file: ObjectHandle): Int
+    actual external fun onRequestFileThumbnail(job: Int, file: ObjectHandle): Int
+    actual external fun onRequestFileMetadata(job: Int, file: ObjectHandle): Int
+    actual external fun onSwitchStorageDevice(job: Int, name: String): Int
+    actual external fun onRunCommand(job: Int, arg0: String?, arg1: String?, arg2: String?, arg3: String?): Int
+    actual external fun onPropChanged(job: Int, pane: Widget): Int
+    actual external fun init(): Int
+    actual external fun free()
+    actual external fun setSetupOptionName(name: String)
     external fun updateNativeLiveview(view: Surface?, isPaused: Boolean)
     // Blocking render loop
     actual external fun nativeLiveviewThread()

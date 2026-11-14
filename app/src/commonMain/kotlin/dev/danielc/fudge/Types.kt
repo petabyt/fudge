@@ -6,6 +6,14 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import kotlin.time.TimeSource
 
+enum class ModuleThreadPolicy(val code: Int) {
+    NO_CONCURRENT_JOBS(0),
+    CONCURRENT_JOBS(1);
+    companion object {
+        fun fromCode(code: Int): ModuleThreadPolicy = ModuleThreadPolicy.entries.find { it.code == code } ?: NO_CONCURRENT_JOBS
+    }
+}
+
 fun longToFileSize(bytes: Long): String {
     if (bytes <= 0) return "0b"
 
@@ -153,19 +161,23 @@ sealed interface Widget {
         val group: Group = Group.DEFAULT,
         val disabled: Boolean = false,
     ) {
-        constructor(name: String, title: String, group: Int, disabled: Boolean) : this(name, title, Group.fromInt(group) ?: Group.DEFAULT, disabled)
+        constructor(name: String, title: String?, group: Int, disabled: Boolean) : this(name, title ?: "?", Group.fromInt(group) ?: Group.DEFAULT, disabled)
     }
     data class Button(override val args: Properties): Widget
-    data class BooleanSetting(override val args: Properties, val value: Boolean): Widget
-    data class IntSetting(override val args: Properties, val value: Int): Widget
-    data class SliderSetting(override val args: Properties, val value: Int, val min: Int, val max: Int): Widget
-    data class ComboboxSetting(override val args: Properties, val index: Int, val options: List<String>): Widget {
+    data class BooleanWidget(override val args: Properties, val value: Boolean): Widget
+    data class IntWidget(override val args: Properties, val value: Int): Widget
+    data class SliderWidget(override val args: Properties, val value: Int, val min: Int, val max: Int): Widget
+    data class ComboboxWidget(override val args: Properties, val index: Int, val options: List<String>): Widget {
         constructor(args: Properties, index: Int, options: Array<String>) : this(args, index, options.toList())
     }
     @Suppress("ArrayInDataClass")
-    data class Graph(
+    data class GraphWidget(
         override val args: Properties,
         val points: IntArray,
+    ): Widget
+    data class MarkdownWidget(
+        override val args: Properties,
+        val text: String
     ): Widget
 }
 

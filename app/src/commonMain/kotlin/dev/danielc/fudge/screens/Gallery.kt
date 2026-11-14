@@ -500,6 +500,7 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
     var rows by rememberSaveable { mutableIntStateOf(4) }
     val userSortBy by model.userSortBy.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    val sortedList by model.currentFilesystemSortedList.collectAsStateWithLifecycle()
 
     @Composable
     fun menu() {
@@ -633,7 +634,7 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
                 }
 
                 if (state?.objects?.isNotEmpty() ?: false) {
-                    itemsIndexed(model.currentFilesystemSortedList.value) { _, entry ->
+                    itemsIndexed(sortedList) { _, entry ->
                         val obj = state?.objects?.getOrNull(entry) ?: return@itemsIndexed
                         val handle = ObjectHandle(entry, state?.storageName)
                         if (displayType == DisplayType.THUMBNAILS) {
