@@ -259,7 +259,7 @@ class ModuleDashboardModel(val module: ModuleInstance) : DashboardModel(module.m
     }
     override suspend fun onStorageDeviceClicked(name: String) {
         val dev = module.storageDevices.value.find { it.storageName == name } ?: return
-        if (dev.isLiveFeedMedium) {
+        if (dev.type == PakStorageType.PAK_LIVE_QUEUE) {
             module.switchScreen(Screen.LIVE_FEED, isInNavBar = true)
         } else {
             module.switchScreen(Screen.FILE_GALLERY, isInNavBar = true)
@@ -655,7 +655,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
     fun addFileMetadata(file: ObjectHandle, v: FileMetadata?) {
         galleryViewModel.updateMetadata(file, v)
         val dev = getStorageDevice(file.storageName)
-        if (dev != null && dev.isLiveFeedMedium) {
+        if (dev != null && dev.type == PakStorageType.PAK_LIVE_QUEUE) {
             liveFeedModel.addFileMetadata(file, v)
         }
 
@@ -670,7 +670,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
     @CalledFromNative
     fun setFileContents(file: ObjectHandle, data: ByteArray?, offset: Long, totalSize: Long) {
         val dev = getStorageDevice(file.storageName)
-        if (dev != null && dev.isLiveFeedMedium) {
+        if (dev != null && dev.type == PakStorageType.PAK_LIVE_QUEUE) {
             liveFeedModel.setFileContents(file, data, offset, totalSize)
         }
         galleryViewModel.downloader?.setFileContents(data, offset, totalSize)

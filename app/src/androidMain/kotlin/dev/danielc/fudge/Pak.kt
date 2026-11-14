@@ -67,7 +67,7 @@ actual object Pak {
 
     fun onPermissionResult(requestCode: Int, permissions: Array<out String?>, grantResults: IntArray) {
         Log.d(TAG, "onPermissionResult")
-        if (grantResults.size == 0) {
+        if (grantResults.isEmpty()) {
             permissionResult = PackageManager.PERMISSION_DENIED
         } else {
             permissionResult = grantResults[0]
@@ -265,7 +265,7 @@ actual object Pak {
 
         override fun onDeviceAppeared(address: String) {
             super.onDeviceAppeared(address)
-            Log.d(TAG, "onDeviceAppeared: " + address)
+            Log.d(TAG, "onDeviceAppeared: $address")
             if (callbacks != null) callbacks!!.onDeviceAppearance(address, true)
         }
 

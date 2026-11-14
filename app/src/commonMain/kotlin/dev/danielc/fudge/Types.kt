@@ -1,5 +1,6 @@
 package dev.danielc.fudge
 import androidx.compose.ui.graphics.ImageBitmap
+import dev.danielc.fudge.ModuleThreadPolicy.NO_CONCURRENT_JOBS
 import fantasyfudge.app.generated.resources.*
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.DrawableResource
@@ -437,7 +438,7 @@ data class StorageInfo(
     val nFiles: Int = objects.size,
     val sizeBytes: Long? = null,
     val usedBytes: Long? = null,
-    val isLiveFeedMedium: Boolean = false,
+    val type: PakStorageType = PakStorageType.PAK_FILESYSTEM,
     val currentStatus: String? = null,
     val currentProgress: Int? = null,
     val objectListSortedOrder: SortBy = SortBy.DEFAULT,
@@ -450,14 +451,14 @@ data class StorageInfo(
         itemsSortedBy: Int,
         sizeBytes: Long,
         usedBytes: Long,
-        isLiveFeedMedium: Boolean,
+        type: Int,
     ) : this(
         storageName = name,
         nFiles = nFiles,
         objectListSortedOrder = SortBy.fromId(itemsSortedBy)!!,
         sizeBytes = if (sizeBytes == 0L) null else sizeBytes,
         usedBytes = if (usedBytes == 0L) null else usedBytes,
-        isLiveFeedMedium = isLiveFeedMedium
+        type = PakStorageType.fromCode(type)
     )
 }
 
@@ -470,3 +471,12 @@ data class FilesystemObject(
     val hasSaved: Boolean = false,
     val selected: Boolean = false,
 )
+
+enum class PakStorageType(val code: Int) {
+    PAK_FILESYSTEM(0),
+    PAK_LIVE_QUEUE(1),
+    PAK_BACKUPS(2);
+    companion object {
+        fun fromCode(code: Int): PakStorageType = PakStorageType.entries.find { it.code == code } ?: PAK_FILESYSTEM
+    }
+}

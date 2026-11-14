@@ -7,7 +7,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -28,7 +27,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -57,11 +55,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import fantasyfudge.app.generated.resources.*
 import dev.danielc.fudge.BackgroundViewModel
 import dev.danielc.fudge.Device
 import dev.danielc.fudge.ModuleManifest
 import dev.danielc.fudge.ModuleProperty
+import dev.danielc.fudge.PakStorageType
 import dev.danielc.fudge.StorageInfo
 import dev.danielc.fudge.Widget
 import dev.danielc.fudge.longToFileSize
@@ -73,6 +71,7 @@ import dev.danielc.fudge.ui.PreviewTabletDark
 import dev.danielc.fudge.ui.theme.FudgeRippleConfig
 import dev.danielc.fudge.ui.theme.FudgeTheme
 import dev.danielc.fudge.ui.theme.errorButtonColors
+import fantasyfudge.app.generated.resources.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -193,6 +192,7 @@ private fun cameraState(): DashboardModel {
         nameOfDevice = "Fujifilm X-T5",
         batteryLevelMain = 48,
         firmwareVersion = "4.31",
+        widgets = listOf(Widget.MarkdownWidget(Widget.Properties("sts", "Status"), "Hello"))
     ), storageDevices = MutableStateFlow(listOf(StorageInfo(
         storageName = "Card 1",
         nFiles = 320,
@@ -204,7 +204,6 @@ private fun cameraState(): DashboardModel {
         sizeBytes = 128000000000L,
         usedBytes = 30000000000L
     ))).asStateFlow())
-    model.updateSettingPane(Widget.MarkdownWidget(Widget.Properties("sts", "Status"), "Hello"))
     return model
 }
 
@@ -454,7 +453,7 @@ private fun CardPane(e: StorageInfo, model: DashboardModel) {
     ) {
         Column(Modifier.padding(10.dp)) {
             Row(Modifier.padding(5.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (e.isLiveFeedMedium) {
+                if (e.type == PakStorageType.PAK_LIVE_QUEUE) {
                     Icon(painterResource(Res.drawable.outline_sim_card_download_24), contentDescription = null)
                 } else {
                     Icon(painterResource(Res.drawable.outline_sd_card_24), contentDescription = null)
@@ -681,8 +680,16 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
                         PaneState()
                     }
                     is Widget.MarkdownWidget -> {
-                        PaneState(PaneState.Color.NEUTRAL, content = {
-                            Text("asdasdokasdp")
+                        PaneState(PaneState.Color.NEUTRAL, fillMaxWidth = true, content = {
+                            Column {
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    Text("Title", modifier = Modifier.align(Alignment.TopStart))
+                                    IconButton(onClick = {  }, modifier = Modifier.align(Alignment.CenterEnd)) {
+                                        Icon(painterResource(Res.drawable.outline_tools_power_drill_24), contentDescription = "Refresh")
+                                    }
+                                }
+                                Text(pane.text)
+                            }
                         })
                     }
                 }

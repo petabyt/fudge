@@ -236,14 +236,14 @@ int pak_rt_set_storage_info(struct PakModule *mod, const char *name, struct PakS
 	(*env)->PushLocalFrame(env, 10);
 
 	jclass info_c = (*env)->FindClass(env, "dev/danielc/fudge/StorageInfo");
-	jmethodID constructor = (*env)->GetMethodID(env, info_c, "<init>", "(Ljava/lang/String;IIJJZ)V");
+	jmethodID constructor = (*env)->GetMethodID(env, info_c, "<init>", "(Ljava/lang/String;IIJJI)V");
 	jobject handle_o = (*env)->NewObject(env, info_c, constructor,
 		(*env)->NewStringUTF(env, name),
-		(jint)info->n_files_total,
+		(jint)info->n_files_root,
 		(jint)info->sorted_by,
 		(jlong)info->size_bytes,
 		(jlong)info->used_bytes,
-		(jboolean)info->is_live
+		(jint)info->type
 	);
 
 	jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");
