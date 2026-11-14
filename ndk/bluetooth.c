@@ -448,7 +448,7 @@ int pak_bt_read_characteristic(struct PakBt *ctx, struct PakGattCharacteristic *
 	return rc;
 }
 
-unsigned int pak_bt_read_characteristic_cached_value(struct PakBt *ctx, struct PakGattCharacteristic *characteristic, uint8_t *buffer, unsigned int max) {
+unsigned int pak_bt_read_characteristic_cached_value(struct PakBt *ctx, struct PakGattCharacteristic *characteristic, void *buffer, unsigned int max) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "getCachedValue", "(Landroid/bluetooth/BluetoothGattCharacteristic;)[B");
@@ -460,7 +460,7 @@ unsigned int pak_bt_read_characteristic_cached_value(struct PakBt *ctx, struct P
 	return (unsigned int)len;
 }
 
-unsigned int pak_bt_get_manufacturer_data(struct PakBt *ctx, struct PakBtDevice *device, int index, uint8_t *buffer, unsigned int max) {
+unsigned int pak_bt_get_manufacturer_data(struct PakBt *ctx, struct PakBtDevice *device, int index, void *buffer, unsigned int max) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 	jmethodID read_m = (*env)->GetMethodID(env, (*env)->FindClass(env, "dev/danielc/fudge/Bluetooth$Device"), "getManufacturerData", "(I)[B");
@@ -472,7 +472,7 @@ unsigned int pak_bt_get_manufacturer_data(struct PakBt *ctx, struct PakBtDevice 
 	return (unsigned int)len;
 }
 
-int pak_bt_write_characteristic(struct PakBt *ctx, struct PakGattCharacteristic *characteristic, const uint8_t *data, unsigned int length, int blocking) {
+int pak_bt_write_characteristic(struct PakBt *ctx, struct PakGattCharacteristic *characteristic, const void *data, unsigned int length, int blocking) {
 	JNIEnv *env = get_jni_env();
 	(*env)->PushLocalFrame(env, 10);
 
