@@ -356,7 +356,6 @@ abstract class ModuleBase: NativeModule() {
 
     suspend fun withJob(callback: JobUpdateCallback = {}, block: (ModuleJob) -> Int): PakReturnCode {
         val job = createJob(callback)
-        println(threadPolicy == ModuleThreadPolicy.NO_CONCURRENT_JOBS)
         var rc = if (threadPolicy == ModuleThreadPolicy.NO_CONCURRENT_JOBS) {
             jobMutex.withLock { PakReturnCode.fromCode(block(job)) }
         } else {
