@@ -88,11 +88,8 @@ option(LIBFUJI_SHARED "Build using shared libraries" ON)
 option(LIBFUJI_MODULE "Compile as libpak module" ON)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/libfuji ${CMAKE_CURRENT_BINARY_DIR}/libfuji)
 # dummy static module
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/dummy ${CMAKE_CURRENT_BINARY_DIR}/dummy)
-# dummy cmf module
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/nothing-buds ${CMAKE_CURRENT_BINARY_DIR}/nothing)
-# dummy goveelife module
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/goveelife ${CMAKE_CURRENT_BINARY_DIR}/goveelife)
-#if(APP_INCLUDED_PTP2)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../libpak/examples/dummy ${CMAKE_CURRENT_BINARY_DIR}/dummy)
+# cmf module
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/nothing ${CMAKE_CURRENT_BINARY_DIR}/nothing)
+# ptp2 module
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../modules/ptp2 ${CMAKE_CURRENT_BINARY_DIR}/ptp2)
-#endif()

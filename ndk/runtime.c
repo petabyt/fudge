@@ -353,6 +353,12 @@ int pak_rt_set_widget(struct PakModule *mod, const char *name, const struct PakW
 			(jint)s->u.comboboxv.index_value,
 			arr
 		);
+	} else if (s->type == PAK_MARKDOWNBOX) {
+		jclass booleansetting_c = (*env)->FindClass(env, "dev/danielc/fudge/Widget$MarkdownWidget");
+		pane_o = (*env)->NewObject(env, booleansetting_c, (*env)->GetMethodID(env, booleansetting_c, "<init>", "(Ldev/danielc/fudge/Widget$Properties;Ljava/lang/String;Z)V"), properties_o,
+			(*env)->NewStringUTF(env, s->u.markdownboxv.text),
+			(jboolean)s->u.markdownboxv.add_refresh_button
+		);
 	}
 	if (pane_o != NULL) {
 		jclass module_c = (*env)->FindClass(env, "dev/danielc/fudge/ModuleInstance");

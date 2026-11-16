@@ -56,6 +56,14 @@ actual object WiFi {
         return true
     }
 
+    actual val isVpnActive: Boolean get() {
+        val connectivityManager = activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetwork = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+
+        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+    }
+
     actual suspend fun requestConnectPermission() {
         // TODO: 'Can request only one set of permissions at a time'
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {

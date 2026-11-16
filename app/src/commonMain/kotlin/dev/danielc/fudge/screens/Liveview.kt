@@ -340,6 +340,7 @@ fun Liveview(modifier: Modifier = Modifier, model: LiveviewModel, intervalometer
                         shutterPanel(Modifier.weight(1f))
                     }
                 }
+                Text("Liveview support is WIP", Modifier.align(Alignment.BottomEnd), style = MaterialTheme.typography.labelSmall)
             }
         }
 

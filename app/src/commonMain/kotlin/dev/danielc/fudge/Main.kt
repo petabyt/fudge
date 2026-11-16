@@ -40,7 +40,9 @@ expect object NativeRuntime {
 }
 
 @Composable
-expect fun WebView(url: String)
+expect fun WebView(url: String, transparent: Boolean = true)
+@Composable
+expect fun WebViewHTML(html: String, transparent: Boolean = true)
 
 expect fun createClipEntry(label: String, text: String): ClipEntry
 
@@ -179,6 +181,7 @@ expect object WiFi {
     ): PakReturnCode
     val primaryAdapter: Adapter?
     val isWiFiEnabled: Boolean
+    val isVpnActive: Boolean
 
     // System doesn't support querying APs or requesting connection, user must be prompted to connect manually
     val requiresManualAccessPointConnection: Boolean

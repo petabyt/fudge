@@ -61,10 +61,10 @@ class ModuleBackupModel(val module: ModuleInstance): BackupModel(module.currentF
         val handle = ObjectHandle(index, module.galleryViewModel.currentFilesystemStateFlow.value?.storageName)
         module.galleryViewModel.updateDownloader(handle)
         val downloader = module.galleryViewModel.downloader
-        module.getFileContents(file = handle, onUpdate = {
+        module.getFileContents(file = handle ) {
             update(it)
             if (it.isFinished && !it.isCancelled) downloader?.save()
-        })
+        }
     }
     override fun onStart() { module.galleryViewModel.setPaused(true) }
     override fun onStop() { module.galleryViewModel.setPaused(false) }
@@ -87,10 +87,10 @@ class ModuleLiveFeedModel(val module: ModuleInstance): LiveFeedModel() {
                 it.lastOrNull()?.let { file ->
                     if (!file.hasFinished) {
                         module.updateStorageDeviceStatus(file.handle.storageName, "Downloading ${file.metadata?.filename}")
-                        module.getFileContents(file = file.handle, onUpdate = { job ->
+                        module.getFileContents(file = file.handle ) { job ->
                             module.updateStorageDeviceStatus(file.handle.storageName, null, if (job.isFinished) null else job.progressBarValue)
                             if (job.isFinished) downloadJob = null else downloadJob = job
-                        })
+                        }
                     }
                 }
             }
@@ -147,7 +147,7 @@ class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: Vi
             for (dev in module.storageDevices.value) {
                 if (dev.storageName != module.currentFilesystem.value?.storageName) {
                     // TODO: Stow cached thumbnails/metadata in module
-                    module.switchStorageDevice({}, dev.storageName)
+                    module.switchStorageDevice(dev.storageName, {})
                     switchStorageDevice(dev)
                 }
             }
@@ -216,7 +216,7 @@ class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: Vi
                 }
                 updateDownloader(file)
                 viewerViewModel.updateStatus("Downloading...")
-                rc = module.getFileContents({ job ->
+                rc = module.getFileContents(file){ job ->
                     viewerDownloadJob = job
                     if (job.isCancelled) {
                         viewerViewModel.updateStatus("Cancelling...")
@@ -225,7 +225,7 @@ class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: Vi
                     if (job.isFinished) {
                         viewerDownloadJob = null
                     }
-                }, file)
+                }
                 if (rc == PakReturnCode.CANCELLED) {
                     onCancel()
                 } else if (rc.failed) {
@@ -246,7 +246,15 @@ class ModuleDashboardModel(val module: ModuleInstance) : DashboardModel(module.m
     }
     override fun propChanged(pane: Widget) {
         CoroutineScope(Dispatchers.IO).launch {
-            module.propChanged(pane)
+            module.propChanged(pane) { job ->
+                if (job.isFinished) {
+                    paneStatusMap.update { it - pane.args.name }
+                } else {
+                    job.progressBarValue?.let { progress ->
+                        paneStatusMap.update { it + (pane.args.name to (progress / 100f)) }
+                    }
+                }
+            }
         }
     }
     override fun runCommand(line: String) {
@@ -262,6 +270,7 @@ class ModuleDashboardModel(val module: ModuleInstance) : DashboardModel(module.m
         if (dev.type == PakStorageType.PAK_LIVE_QUEUE) {
             module.switchScreen(Screen.LIVE_FEED, isInNavBar = true)
         } else {
+            module.galleryViewModel.switchStorageDevice(dev)
             module.switchScreen(Screen.FILE_GALLERY, isInNavBar = true)
         }
     }
@@ -290,14 +299,6 @@ class ModuleConnectingScreenModel(val module: ModuleInstance) : ConnectingScreen
         WiFi.interruptAll()
         return true
     }
-}
-
-private fun savedDeviceEntityToInfo(saved: SavedDeviceEntity?): SavedDeviceInfo? {
-    return if (saved == null) null else SavedDeviceInfo(
-        saved.uniqueIdentifier,
-        saved.name,
-        saved.auxillaryData,
-    )
 }
 
 abstract class ModuleBase: NativeModule() {
@@ -345,8 +346,17 @@ abstract class ModuleBase: NativeModule() {
         job.isCancelled = true
     }
 
-    suspend fun withJob(callback: JobUpdateCallback, block: (ModuleJob) -> Int): PakReturnCode {
+    private fun savedDeviceEntityToInfo(saved: SavedDeviceEntity?): SavedDeviceInfo? {
+        return if (saved == null) null else SavedDeviceInfo(
+            saved.uniqueIdentifier,
+            saved.name,
+            saved.auxillaryData,
+        )
+    }
+
+    suspend fun withJob(callback: JobUpdateCallback = {}, block: (ModuleJob) -> Int): PakReturnCode {
         val job = createJob(callback)
+        println(threadPolicy == ModuleThreadPolicy.NO_CONCURRENT_JOBS)
         var rc = if (threadPolicy == ModuleThreadPolicy.NO_CONCURRENT_JOBS) {
             jobMutex.withLock { PakReturnCode.fromCode(block(job)) }
         } else {
@@ -364,22 +374,22 @@ abstract class ModuleBase: NativeModule() {
             onFindConnection(job.id)
         }
     }
-    suspend fun getFileMetadata(onUpdate: JobUpdateCallback = {}, file: ObjectHandle): PakReturnCode {
+    suspend fun getFileMetadata(file: ObjectHandle, onUpdate: JobUpdateCallback = {}): PakReturnCode {
         return withJob(onUpdate) { job ->
             onRequestFileMetadata(job.id, file)
         }
     }
-    suspend fun getFileThumbnail(onUpdate: JobUpdateCallback = {}, file: ObjectHandle): PakReturnCode {
+    suspend fun getFileThumbnail(file: ObjectHandle, onUpdate: JobUpdateCallback = {}): PakReturnCode {
         return withJob(onUpdate) { job ->
             onRequestFileThumbnail(job.id, file)
         }
     }
-    suspend fun getFileContents(onUpdate: JobUpdateCallback = {}, file: ObjectHandle): PakReturnCode {
+    suspend fun getFileContents(file: ObjectHandle, onUpdate: JobUpdateCallback = {}): PakReturnCode {
         return withJob(onUpdate) { job ->
             onRequestFileContents(job.id, file)
         }
     }
-    suspend fun switchStorageDevice(onUpdate: JobUpdateCallback = {}, name: String): PakReturnCode {
+    suspend fun switchStorageDevice(name: String, onUpdate: JobUpdateCallback = {}): PakReturnCode {
         return withJob(onUpdate) { job ->
             onSwitchStorageDevice(job.id, name)
         }
@@ -408,8 +418,8 @@ abstract class ModuleBase: NativeModule() {
     suspend fun runCommand(cmd: Command): PakReturnCode {
         return runCommand(cmd.cmd)
     }
-    suspend fun propChanged(pane: Widget): PakReturnCode {
-        return withJob({}) { job ->
+    suspend fun propChanged(pane: Widget, onUpdate: JobUpdateCallback = {}): PakReturnCode {
+        return withJob(onUpdate) { job ->
             onPropChanged(job.id, pane)
         }
     }
@@ -501,7 +511,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                 }
             }
             ModuleManifest.ModuleType.WEBASSEMBLY -> {
-                debugLog("<error>Wasm not implemented yet")
+                errorLog("Wasm not implemented yet")
                 -1
             }
         }
@@ -572,6 +582,9 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
     }
     @CalledFromNative
     fun debugLog(s: String) {
+        debugLogModel.addLine(s)
+    }
+    fun errorLog(s: String) {
         debugLogModel.addLine(s)
     }
     suspend fun stopAllThreads() {
@@ -704,7 +717,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                 connectingModel.setRequiredAction(ConnectingRequiredAction.NONE)
                 val callback = object : WiFi.WiFiDiscoveryCallback() {
                     override fun failed(reason: String, code: Int) {
-                        debugLog("<error>${reason}")
+                        errorLog(reason)
                     }
 
                     override fun onConnected(net: WiFi.Adapter) {
@@ -730,7 +743,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                 connectingModel.setTryAgainDisabled(true)
                 val rc = WiFi.connectToAccessPointCompanion(mutableListOf(filter), companionName, callback, true)
                 if (rc.failed) {
-                    debugLog("<error>Association error: ${rc}")
+                    errorLog("Association error: ${rc}")
                 }
                 connectingModel.setTryAgainDisabled(false)
                 connectingModel.setPopupText(null)
@@ -747,7 +760,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
         connectingModel.setTryAgainDisabled(true)
         val callback = object : WiFi.WiFiDiscoveryCallback() {
             override fun failed(reason: String, code: Int) {
-                debugLog("<error>${reason}")
+                errorLog(reason)
             }
             override fun onConnected(net: WiFi.Adapter) {
                 connectingModel.setPopupText(null)
@@ -777,7 +790,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                     setIsConnected()
                     return
                 } else {
-                    debugLog("<error>Failed to connect")
+                    errorLog("Failed to connect")
                 }
             }
         } else {
@@ -800,7 +813,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                 }
             }
             if (rc.failed) {
-                debugLog("<error>Association error: ${rc}")
+                errorLog("Association error: ${rc}")
             }
         }
         connectingModel.setTryAgainDisabled(false)
@@ -867,10 +880,9 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
                 }
             }
             connectingModel.setTryAgainDisabled(true)
-            // TODO GAME_CONTROLLER
             val rc = Bluetooth.pairWithDeviceCompanion(filters, companionName, null,callback, true)
             if (rc.failed) {
-                debugLog("<error>Association error: ${rc}")
+                errorLog("Association error: ${rc}")
             }
             connectingModel.setTryAgainDisabled(false)
             connectingModel.setPopupText(null)
@@ -890,6 +902,9 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
             else -> null
         }
         connectingModel.reset(target, transport)
+        if (WiFi.isVpnActive) {
+            errorLog("VPN is active, connections may be blocked.")
+        }
         if (target.usbFilters.isNotEmpty() && transport == ModuleManifest.Transport.USB) {
             if (chosenConnectableDevice is ConnectableDevice.ConnectableUSBDevice) {
                 val rc = tryConnectUSB(chosenConnectableDevice.device, savedDeviceInfo,{ job -> connectCallback(job) })
@@ -951,7 +966,9 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
             val job = mainLoopJob
             var curr = TimeSource.Monotonic.markNow()
             while (job != null && !job.isCancelled) {
-                module.onIdleTick(curr.elapsedNow().toInt(DurationUnit.MICROSECONDS))
+                module.withJob({}) {
+                    module.onIdleTick(curr.elapsedNow().toInt(DurationUnit.MICROSECONDS))
+                }
                 curr = TimeSource.Monotonic.markNow()
                 delay(module.currentTickIntervalUs.toLong().microseconds)
             }
@@ -960,7 +977,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
 
     private fun disconnect(reason: String, code: PakReturnCode) {
         disconnectReason = reason
-        debugLog("<error>Disconnected: ${reason}")
+        errorLog("Disconnected: ${reason}")
         disconnectedErrorCode = code
         homeModelView.goToScreen(Screen.DISCONNECTED)
     }

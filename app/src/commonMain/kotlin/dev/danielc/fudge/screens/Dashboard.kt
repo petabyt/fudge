@@ -6,18 +6,28 @@ import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -27,12 +37,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -48,6 +60,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -61,13 +77,14 @@ import dev.danielc.fudge.ModuleManifest
 import dev.danielc.fudge.ModuleProperty
 import dev.danielc.fudge.PakStorageType
 import dev.danielc.fudge.StorageInfo
+import dev.danielc.fudge.WebView
+import dev.danielc.fudge.WebViewHTML
 import dev.danielc.fudge.Widget
 import dev.danielc.fudge.longToFileSize
 import dev.danielc.fudge.ui.DynamicScaffold
 import dev.danielc.fudge.ui.DynamicScaffoldNavBarItem
 import dev.danielc.fudge.ui.IntGridGraph
 import dev.danielc.fudge.ui.PreviewPixel9ProDark
-import dev.danielc.fudge.ui.PreviewTabletDark
 import dev.danielc.fudge.ui.theme.FudgeRippleConfig
 import dev.danielc.fudge.ui.theme.FudgeTheme
 import dev.danielc.fudge.ui.theme.errorButtonColors
@@ -84,6 +101,8 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.collections.getOrElse
+import kotlin.math.round
 import kotlin.time.Duration.Companion.milliseconds
 
 data class DashboardState(
@@ -92,8 +111,8 @@ data class DashboardState(
     val batteryLevelLeft: Int? = null,
     val batteryLevelRight: Int? = null,
     val nameOfDevice: String? = null,
-    val temperature: Int? = null,
-    val humidity: Int? = null,
+    val temperatureCenticelsius: Int? = null,
+    val humidityPercentage: Int? = null,
     val firmwareVersion: String? = null,
     // TODO: This is never set
     val connectionType: ModuleManifest.Transport? = null,
@@ -107,6 +126,7 @@ open class DashboardModel(
 ): BackgroundViewModel() {
     private val _state = MutableStateFlow(initialState ?: DashboardState())
     val state = _state.asStateFlow()
+    val paneStatusMap = MutableStateFlow<Map<String, Float>>(emptyMap())
 
     open fun propChanged(pane: Widget) {}
     open fun disconnect() {}
@@ -130,8 +150,8 @@ open class DashboardModel(
         scope.launch(Dispatchers.IO) {
             _state.update { currentState ->
                 when (type) {
-                    ModuleProperty.TEMPERATURE -> currentState.copy(temperature = value)
-                    ModuleProperty.HUMIDITY -> currentState.copy(humidity = value)
+                    ModuleProperty.TEMPERATURE -> currentState.copy(temperatureCenticelsius = value)
+                    ModuleProperty.HUMIDITY -> currentState.copy(humidityPercentage = value)
                     ModuleProperty.BATTERY_LEFT -> currentState.copy(batteryLevelLeft = value)
                     ModuleProperty.BATTERY_MAIN -> currentState.copy(batteryLevelMain = value)
                     ModuleProperty.BATTERY_RIGHT -> currentState.copy(batteryLevelRight = value)
@@ -143,27 +163,20 @@ open class DashboardModel(
     fun setDashboardPane(pane: Widget) {
         scope.launch(Dispatchers.IO) {
             _state.update { currentState ->
-                // Incorrect?
-                if (currentState.widgets.find { it.args.name == pane.args.name } == null) {
-                    currentState.copy(widgets = currentState.widgets + pane)
+                val existing = currentState.widgets.find { it.args.name == pane.args.name }
+                val list = currentState.widgets.toMutableList()
+                if (existing != null) {
+                    list[currentState.widgets.indexOf(existing)] = pane
+                    currentState.copy(widgets = list)
                 } else {
-                    currentState
+                    currentState.copy(widgets = list + pane)
                 }
             }
         }
     }
     fun updateSettingPane(pane: Widget) {
         scope.launch(Dispatchers.IO) {
-            _state.update { currentState ->
-                val index = currentState.widgets.find { it.args.name == pane.args.name }
-                val list = currentState.widgets.toMutableList()
-                if (index != null) {
-                    list[currentState.widgets.indexOf(index)] = pane
-                    currentState.copy(widgets = list)
-                } else {
-                    currentState
-                }
-            }
+            setDashboardPane(pane)
             propChanged(pane)
         }
     }
@@ -176,6 +189,7 @@ data class PaneState(
     val onClick: () -> Unit = {},
     val content: (@Composable () -> Unit)? = null,
     val fillMaxWidth: Boolean = false,
+    val progress: Float? = null
 ) {
     enum class Color {
         PRIMARY,
@@ -186,31 +200,32 @@ data class PaneState(
     }
 }
 
-private fun cameraState(): DashboardModel {
-    val manifest = ModuleManifest(name = "Fujifilm", targets = listOf(ModuleManifest.Target(deviceId = Device.PROFESSIONAL_CAMERA)))
-    val model = DashboardModel(manifest, DashboardState(
-        nameOfDevice = "Fujifilm X-T5",
-        batteryLevelMain = 48,
-        firmwareVersion = "4.31",
-        widgets = listOf(Widget.MarkdownWidget(Widget.Properties("sts", "Status"), "Hello"))
-    ), storageDevices = MutableStateFlow(listOf(StorageInfo(
-        storageName = "Card 1",
-        nFiles = 320,
-        sizeBytes = 64000000000L,
-        usedBytes = 30000000000L
-    ), StorageInfo(
-        storageName = "Card 2",
-        nFiles = 67,
-        sizeBytes = 128000000000L,
-        usedBytes = 30000000000L
-    ))).asStateFlow())
-    return model
-}
 
-@PreviewTabletDark
+@PreviewPixel9ProDark
 @Composable
 private fun PreviewDashboardCamera() {
-    var state by remember { mutableStateOf(cameraState()) }
+    val manifest = ModuleManifest(name = "Fujifilm", targets = listOf(ModuleManifest.Target(deviceId = Device.PROFESSIONAL_CAMERA)))
+    var state by remember { mutableStateOf(
+        DashboardModel(manifest, DashboardState(
+            nameOfDevice = "Fujifilm X-T5",
+            batteryLevelMain = 48,
+            firmwareVersion = "4.31",
+            widgets = listOf(
+                Widget.Button(Widget.Properties("x", "Foo")),
+                Widget.BooleanWidget(Widget.Properties("x", "Foo"), value = true),
+                Widget.MarkdownWidget(Widget.Properties("sts", "Status"), "Hello", true))
+        ), storageDevices = MutableStateFlow(listOf(StorageInfo(
+            storageName = "Card 1",
+            nFiles = 320,
+            sizeBytes = 64000000000L,
+            usedBytes = 30000000000L
+        ), StorageInfo(
+            storageName = "Card 2",
+            nFiles = 67,
+            sizeBytes = 128000000000L,
+            usedBytes = 30000000000L
+        ))).asStateFlow())
+    ) }
     return FudgeTheme {
         DynamicScaffold(topBar = {}, navBarItems = listOf(
             DynamicScaffoldNavBarItem(label = { Text("Dashboard") }, onClick = {}, icon = { Icon(painterResource(Res.drawable.outline_home_24), contentDescription = null) }, selected = true),
@@ -256,7 +271,7 @@ private fun budsState(): DashboardModel {
     ), storageDevices = MutableStateFlow(emptyList<StorageInfo>()).asStateFlow())
 }
 
-@PreviewPixel9ProDark
+//@PreviewPixel9ProDark
 @Composable
 private fun PreviewDashboardBuds() {
     var state by remember { mutableStateOf(budsState()) }
@@ -269,10 +284,17 @@ private fun PreviewDashboardBuds() {
     }
 }
 
+@Composable fun BoxScope.PaneProgressbar(progress: Float) {
+    Box(Modifier.fillMaxWidth().align(Alignment.BottomStart).background(MaterialTheme.colorScheme.inversePrimary)) {
+        LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().padding(5.dp))
+    }
+}
+
 @Composable
-private fun DashboardPane(modifier: Modifier = Modifier, bg: Color, fg: Color, content: @Composable () -> Unit, onClick: () -> Unit) {
-    CompositionLocalProvider(LocalRippleConfiguration provides FudgeRippleConfig(fg)) {
-        Box(modifier = modifier
+private fun DashboardPane(modifier: Modifier = Modifier, bg: Color, fg: Color, onClick: () -> Unit, progress: Float? = null, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalRippleConfiguration provides if (bg == MaterialTheme.colorScheme.surfaceContainer) LocalRippleConfiguration.current else FudgeRippleConfig(Color.White)) {
+        Box(
+            modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .background(bg)
             .clickable(onClick = onClick)
@@ -282,6 +304,9 @@ private fun DashboardPane(modifier: Modifier = Modifier, bg: Color, fg: Color, c
             )
         ) {
             content()
+            progress?.let {
+                PaneProgressbar(it)
+            }
         }
     }
 }
@@ -305,7 +330,7 @@ data class PaneBatteryStatus(
     val percent: Int,
 )
 
-fun BatteryListPane(batteries: List<PaneBatteryStatus>): PaneState {
+private fun BatteryListPane(batteries: List<PaneBatteryStatus>): PaneState {
     return PaneState(PaneState.Color.NEUTRAL, content = {
         Text("Battery Status", color = MaterialTheme.colorScheme.onSurface)
         Row(Modifier.fillMaxWidth()) {
@@ -321,7 +346,7 @@ fun BatteryListPane(batteries: List<PaneBatteryStatus>): PaneState {
 }
 
 @Composable
-fun SettingsDialog(model: DashboardModel, close: () -> Unit = {}) {
+private fun SettingsDialog(model: DashboardModel, close: () -> Unit = {}) {
     Dialog(onDismissRequest = {
         close()
     }) {
@@ -349,7 +374,7 @@ fun SettingsDialog(model: DashboardModel, close: () -> Unit = {}) {
 }
 
 @Composable
-fun DropdownDialog(close: () -> Unit = {}, comboboxSetting: Widget.ComboboxWidget, onSelect: (Int) -> Unit = {}) {
+private fun DropdownDialog(close: () -> Unit = {}, comboboxSetting: Widget.ComboboxWidget, onSelect: (Int) -> Unit = {}) {
     Dialog(onDismissRequest = {
         close()
     }) {
@@ -484,70 +509,108 @@ private fun CardPane(e: StorageInfo, model: DashboardModel) {
 }
 
 @Composable
-private fun RenderPanes(panes: List<PaneState>) {
-    LazyVerticalStaggeredGrid(
-        modifier = Modifier.fillMaxSize(),
-        columns = StaggeredGridCells.Adaptive(160.dp),
-        verticalItemSpacing = 8.dp,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        content = {
-            items(panes, span = {
-                if (it.fillMaxWidth) {
-                    StaggeredGridItemSpan.FullLine
-                } else {
-                    StaggeredGridItemSpan.SingleLane
+private fun RenderPanes(model: DashboardModel, panes: List<PaneState>) {
+    val storageDevices by model.storageDevices.collectAsStateWithLifecycle()
+    fun processDashboardItems(items: List<PaneState>): List<Pair<PaneState, PaneState?>> {
+        val rows = mutableListOf<Pair<PaneState, PaneState?>>()
+        val pendingHalves = mutableListOf<PaneState>()
+
+        fun flushHalves() {
+            if (pendingHalves.size == 2) {
+                rows.add(Pair(pendingHalves[0], pendingHalves[1]))
+                pendingHalves.clear()
+            } else if (pendingHalves.size == 1) {
+                rows.add(Pair(pendingHalves[0], null))
+                pendingHalves.clear()
+            }
+        }
+
+        for (item in items) {
+            if (item.fillMaxWidth) {
+                flushHalves()
+                rows.add(Pair(item, null))
+            } else {
+                pendingHalves.add(item)
+                if (pendingHalves.size == 2) {
+                    flushHalves()
                 }
-            }) { pane ->
-                var bg: Color
-                var fg: Color
-                when (pane.color) {
-                    PaneState.Color.PRIMARY -> {
-                        bg = MaterialTheme.colorScheme.primary
-                        fg = MaterialTheme.colorScheme.onPrimary
-                    }
-                    PaneState.Color.SECONDARY -> {
-                        bg = MaterialTheme.colorScheme.secondary
-                        fg = MaterialTheme.colorScheme.onSecondary
-                    }
-                    PaneState.Color.ERROR -> {
-                        bg = MaterialTheme.colorScheme.error
-                        fg = MaterialTheme.colorScheme.onError
-                    }
-                    PaneState.Color.NEUTRAL -> {
-                        bg = MaterialTheme.colorScheme.surfaceContainer
-                        fg = MaterialTheme.colorScheme.onSurface
-                    }
-                    PaneState.Color.TERTIARY -> {
-                        bg = MaterialTheme.colorScheme.tertiary
-                        fg = MaterialTheme.colorScheme.onTertiary
-                    }
-                }
-                DashboardPane(
-                    Modifier
-                        .fillMaxSize()
-                        .wrapContentHeight(), // ?? not expanding pane size
-                    bg = bg,
-                    fg = fg,
-                    onClick = pane.onClick,
-                    content = {
-                        if (pane.content == null) {
-                            Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                                if (pane.icon != null) {
-                                    Icon(
-                                        painter = painterResource(pane.icon),
-                                        contentDescription = null,
-                                        tint = fg,
-                                    )
-                                }
-                                Text(pane.text.orEmpty(), color = fg)
-                            }
-                        } else {
-                            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                pane.content()
-                            }
+            }
+        }
+        flushHalves()
+        return rows
+    }
+
+    val rows = remember(panes) { processDashboardItems(panes) }
+
+    @Composable
+    fun RenderPane(pane: PaneState, modifier: Modifier = Modifier) {
+        var bg: Color
+        var fg: Color
+        when (pane.color) {
+            PaneState.Color.PRIMARY -> {
+                bg = MaterialTheme.colorScheme.primary
+                fg = MaterialTheme.colorScheme.onPrimary
+            }
+            PaneState.Color.SECONDARY -> {
+                bg = MaterialTheme.colorScheme.secondary
+                fg = MaterialTheme.colorScheme.onSecondary
+            }
+            PaneState.Color.ERROR -> {
+                bg = MaterialTheme.colorScheme.error
+                fg = MaterialTheme.colorScheme.onError
+            }
+            PaneState.Color.NEUTRAL -> {
+                bg = MaterialTheme.colorScheme.surfaceContainer
+                fg = MaterialTheme.colorScheme.onSurface
+            }
+            PaneState.Color.TERTIARY -> {
+                bg = MaterialTheme.colorScheme.tertiary
+                fg = MaterialTheme.colorScheme.onTertiary
+            }
+        }
+        DashboardPane(
+            modifier.fillMaxHeight(),
+            bg = bg,
+            fg = fg,
+            progress = pane.progress,
+            onClick = pane.onClick,
+            content = {
+                if (pane.content == null) {
+                    Row(Modifier.fillMaxSize().padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                        if (pane.icon != null) {
+                            Icon(
+                                painter = painterResource(pane.icon),
+                                contentDescription = null,
+                                tint = fg,
+                            )
                         }
+                        Text(pane.text.orEmpty(), color = fg)
                     }
-                )
+                } else {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        pane.content()
+                    }
+                }
+            }
+        )
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        content = {
+            items(storageDevices) {
+                CardPane(it, model)
+            }
+            items(rows) { (left, right) ->
+                if (right == null) {
+                    RenderPane(left, Modifier.fillMaxWidth())
+                } else {
+                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RenderPane(left, Modifier.weight(1f))
+                        RenderPane(right, Modifier.weight(1f))
+                    }
+                }
             }
         }
     )
@@ -556,9 +619,9 @@ private fun RenderPanes(panes: List<PaneState>) {
 @Composable
 fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
     val state by model.state.collectAsStateWithLifecycle()
-    val storageDevices by model.storageDevices.collectAsStateWithLifecycle()
     var showSettings by remember { mutableStateOf(false) }
     var selectedDropdown by remember { mutableStateOf<Widget.ComboboxWidget?>(null) }
+    val statusMap by model.paneStatusMap.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     if (showSettings) {
         SettingsDialog(model, close = {
@@ -584,10 +647,6 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OverviewPane(state, model, { showSettings = true })
-            for (e in storageDevices) {
-                CardPane(e, model)
-            }
-
             val panes = mutableListOf<PaneState>()
 
             val batteries = mutableListOf<PaneBatteryStatus>()
@@ -596,26 +655,24 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
             state.batteryLevelRight?.let { level ->  batteries.add(PaneBatteryStatus("Right", level)) }
             if (batteries.size > 1) panes += BatteryListPane(batteries)
 
-            state.temperature?.let { temp ->
+            state.temperatureCenticelsius?.let { temp ->
                 panes += PaneState(PaneState.Color.NEUTRAL, content = {
                     Row(Modifier.fillMaxWidth()) {
                         Icon(painterResource(Res.drawable.outline_device_thermostat_24), contentDescription = null)
                         Text("Temperature", color = MaterialTheme.colorScheme.onSurface)
                     }
                     val c = temp.toFloat() / 100
-                    //Text("%.2f C / %.2f F".format(c, c * 1.8 + 32).toString())
-                    TODO("handle formatting")
+                    Text("${round(c * 100.0) / 100.0} C / ${round((c * 1.8 + 32) * 100.0) / 100.0} F")
                 })
             }
 
-            state.humidity?.let { humid ->
+            state.humidityPercentage?.let { humid ->
                 panes += PaneState(PaneState.Color.NEUTRAL, content = {
                     Row(Modifier.fillMaxWidth()) {
                         Icon(painterResource(Res.drawable.outline_humidity_percentage_24), contentDescription = null)
                         Text("Humidity", color = MaterialTheme.colorScheme.onSurface)
                     }
-                    //Text("%.2f%%".format(humid.toFloat() / 100))
-                    TODO("handle formatting")
+                    Text("${humid.toFloat() / 100.0}%")
                 })
             }
 
@@ -634,7 +691,7 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
                     is Widget.Button -> {
                         PaneState(PaneState.Color.PRIMARY, icon = Res.drawable.outline_lightbulb_2_24, text = pane.args.title, onClick = {
                             model.updateSettingPane(pane)
-                        })
+                        }, progress = statusMap.getOrElse(pane.args.name, { null }))
                     }
                     is Widget.GraphWidget -> {
                         PaneState(PaneState.Color.NEUTRAL, content = {
@@ -681,20 +738,36 @@ fun Dashboard(modifier: Modifier = Modifier, model: DashboardModel) {
                     }
                     is Widget.MarkdownWidget -> {
                         PaneState(PaneState.Color.NEUTRAL, fillMaxWidth = true, content = {
-                            Column {
+                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Box(modifier = Modifier.fillMaxWidth()) {
-                                    Text("Title", modifier = Modifier.align(Alignment.TopStart))
-                                    IconButton(onClick = {  }, modifier = Modifier.align(Alignment.CenterEnd)) {
-                                        Icon(painterResource(Res.drawable.outline_tools_power_drill_24), contentDescription = "Refresh")
+                                    Text(pane.args.title, modifier = Modifier.align(Alignment.CenterStart), style = MaterialTheme.typography.titleSmall)
+                                    if (pane.showRefreshButton) {
+                                        IconButton(onClick = { model.updateSettingPane(pane) }, modifier = Modifier.align(Alignment.CenterEnd).size(25.dp)) {
+                                            Icon(painterResource(Res.drawable.outline_refresh_24), contentDescription = "Refresh")
+                                        }
                                     }
                                 }
-                                Text(pane.text)
+                                pane.text?.let { text ->
+                                    if (LocalInspectionMode.current) {
+                                        Box(modifier = Modifier.fillMaxWidth()) {
+                                            Text(text, modifier = Modifier.padding(5.dp))
+                                        }
+                                    } else {
+                                        val cssColor = MaterialTheme.colorScheme.onSurface.toArgb().toHexString().substring(2)
+                                        val style = """
+                                            <style>
+                                            body { color: #${cssColor}; background-color: transparent; }
+                                            </style>
+                                        """.trimIndent()
+                                        WebViewHTML("${style}${text}")
+                                    }
+                                }
                             }
-                        })
+                        }, progress = statusMap.getOrElse(pane.args.name, { null }))
                     }
                 }
             }
-            RenderPanes(panes)
+            RenderPanes(model, panes)
         }
     }
 }

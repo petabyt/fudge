@@ -72,7 +72,7 @@ int pak_wifi_unref_adapter(struct PakNet *ctx, struct PakWiFiAdapter *adapter) {
 
 /// Bind a socket file descriptor to a network adapter
 int pak_wifi_bind_socket_to_adapter(struct PakNet *ctx, struct PakWiFiAdapter *adapter, int fd) {
-	__android_log_print(ANDROID_LOG_DEBUG, "wifi", "Binding %d to %ld", fd, adapter->priv->network_handle);
+	__android_log_print(ANDROID_LOG_DEBUG, "wifi", "Binding %d to %ld", fd, (long)adapter->priv->network_handle);
 	return android_setsocknetwork(adapter->priv->network_handle, fd);
 }
 
@@ -105,8 +105,7 @@ int pak_wifi_request_connection(struct PakNet *ctx, struct PakWiFiApFilter *spec
 }
 
 JNIEXPORT void JNICALL
-Java_dev_danielc_fudge_WiFi_00024NativeWiFiDiscoveryCallback_onConnected(JNIEnv *env, jobject thiz,
-																	jobject net) {
+Java_dev_danielc_fudge_WiFi_00024NativeWiFiDiscoveryCallback_onConnected(JNIEnv *env, jobject thiz, jobject net) {
 	// TODO: implement found()
 }
 

@@ -178,7 +178,8 @@ sealed interface Widget {
     ): Widget
     data class MarkdownWidget(
         override val args: Properties,
-        val text: String
+        val text: String?,
+        val showRefreshButton: Boolean,
     ): Widget
 }
 
