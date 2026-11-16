@@ -1,6 +1,8 @@
-# FantasyFudge (temp name)
+# Fudge
 
-This is an Android app that can connect to mirrorless cameras and various other devices, serving as an alternative to the vendor-provided app.
+This is an app that can connect to Fujifilm cameras and various other cameras and devices, serving as an alternative to the vendor-provided app.
+
+This is a continuation of the [Android app](https://fudge.fm/blog/fujiapp/) started in 2023.
 
 | <img src='https://s1.danielc.dev/screenshots/Screenshot_20260128-140111.png' width='350'> | <img src='https://s1.danielc.dev/screenshots/Screenshot_20260430-204144.png' width='350'> | <img src='https://s1.danielc.dev/screenshots/Screenshot_20260430-205138.png' width='350'> | <img src='https://s1.danielc.dev/screenshots/Screenshot_20260804-005001.png' width='350'> |
 |-|-|-|-|
@@ -32,7 +34,8 @@ Install Beta builds:
 ## Modules
 Reverse-engineered protocol logic is separated from the frontend through a runtime and module system.
 
-The current set of modules are available here: https://github.com/petabyt/gadget-libs
+The specification for the module API is available here: https://github.com/petabyt/libpak  
+The current set of modules are available here: https://github.com/petabyt/gadget-libs  
 
 Like the Linux kernel module system, modules use low level Bluetooth or WiFi APIs to directly communicate with devices
 through their proprietary protocols. Modules can be installed on the fly without recompiling the app.

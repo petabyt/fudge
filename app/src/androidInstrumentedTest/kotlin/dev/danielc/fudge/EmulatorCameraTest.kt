@@ -37,7 +37,7 @@ class EmulatorCameraTest {
             if (waitForCondition(1000) { mod.currentScreen == Screen.DASHBOARD }) fail("Dashboard screen timeout")
             println("debug log: ${mod.getVerboseLog()}")
             val screens = mod.homeModelView.homeState.value.supportedNavBarScreenList
-            for (s in screens) {
+            for (s in (screens + screens)) { // switch through all screens twice
                 runBlocking {
                     mod.switchScreen(s, true, {})
                     if (s == Screen.FILE_GALLERY) {
