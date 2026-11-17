@@ -585,7 +585,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
         debugLogModel.addLine(s)
     }
     fun errorLog(s: String) {
-        debugLogModel.addLine(s)
+        debugLogModel.addLine("<error>${s}")
     }
     suspend fun stopAllThreads() {
         println("Stopping module threads")
