@@ -1,10 +1,21 @@
 package dev.danielc.fudge
 
 import android.view.Surface
+import java.util.concurrent.locks.ReentrantLock
 import dev.danielc.fudge.SavedDeviceEntity.WiFiInfo
 
 actual open class NativeModule {
     var struct: ByteArray? = null
+
+    private val lock = ReentrantLock()
+    actual fun <T> withMapLock(action: () -> T): T {
+        lock.lock()
+        try {
+            return action()
+        } finally {
+            lock.unlock()
+        }
+    }
 
     private var takenAssociationId: Boolean = false
     var connectedBluetoothDevice: Bluetooth.Device? = null

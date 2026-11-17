@@ -89,6 +89,7 @@ expect object FileLayer {
 }
 
 expect open class NativeModule() {
+    fun <T> withMapLock(action: () -> T): T
     fun onFindConnection(job: Int): Int
     fun onTryConnectUSB(device: USB.Device, saved: SavedDeviceInfo?, job: Int): Int
     fun onTryConnectWiFi(adapter: WiFi.Adapter, saved: SavedDeviceInfo?, job: Int): Int

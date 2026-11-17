@@ -303,13 +303,14 @@ class ModuleConnectingScreenModel(val module: ModuleInstance) : ConnectingScreen
 
 abstract class ModuleBase: NativeModule() {
     private var jobs = mutableMapOf<Int, ModuleJob>()
-    private val jobsMapMutex = Mutex()
     private var jobCounter = 0
     private var threadPolicy = ModuleThreadPolicy.NO_CONCURRENT_JOBS
     private val jobMutex = Mutex()
 
     fun cancelAllJobs() {
-        jobs.forEach { it.value.isCancelled = true }
+        withMapLock {
+            jobs.forEach { it.value.isCancelled = true }
+        }
     }
 
     @CalledFromNative
@@ -317,20 +318,20 @@ abstract class ModuleBase: NativeModule() {
         threadPolicy = ModuleThreadPolicy.fromCode(v)
     }
 
-    suspend fun createJob(onUpdate: JobUpdateCallback): ModuleJob {
-        jobsMapMutex.withLock {
+    fun createJob(onUpdate: JobUpdateCallback): ModuleJob {
+        return withMapLock {
             val id = ++jobCounter
             val job = ModuleJob(
                 id = id,
                 onUpdate = onUpdate
             )
             jobs.put(id, job)
-            return job
+            job
         }
     }
 
-    suspend fun closeJob(job: ModuleJob) {
-        jobsMapMutex.withLock {
+    fun closeJob(job: ModuleJob) {
+        withMapLock {
             val key = jobs.entries.find { it.value == job }?.key
             if (key != null) {
                 jobs.remove(key)
@@ -339,11 +340,15 @@ abstract class ModuleBase: NativeModule() {
     }
 
     fun getJob(job: Int): ModuleJob? {
-        return jobs.entries.find { it.key == job }?.value
+        return withMapLock {
+            jobs.entries.find { it.key == job }?.value
+        }
     }
 
     fun cancelJob(job: ModuleJob) {
-        job.isCancelled = true
+        withMapLock {
+            job.isCancelled = true
+        }
     }
 
     private fun savedDeviceEntityToInfo(saved: SavedDeviceEntity?): SavedDeviceInfo? {

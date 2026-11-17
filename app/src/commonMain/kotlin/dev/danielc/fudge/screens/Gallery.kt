@@ -136,7 +136,7 @@ abstract class GalleryViewModel(
     private val currentFilesystem: MutableStateFlow<StorageInfo?> = MutableStateFlow(null)
 ) : BackgroundViewModel() {
     val currentFilesystemStateFlow = currentFilesystem.asStateFlow()
-
+    val triggerQueueTracker = MutableStateFlow(0)
     /** List of indexes into currentFilesystem.objects */
     val currentFilesystemSortedList: MutableStateFlow<List<Int>> = MutableStateFlow(emptyList())
     val userSortBy = MutableStateFlow(SortBy.NEWEST_FIRST)
@@ -182,6 +182,7 @@ abstract class GalleryViewModel(
         userSortBy.value = sort
         // Probably a good idea to clear queue here
         sortObjectList()
+        triggerQueueTracker.value++
     }
 
     private fun sortObjectList() {
@@ -279,6 +280,7 @@ abstract class GalleryViewModel(
                     info
                 }
                 sortObjectList()
+                triggerQueueTracker.value++
             }
         }
     }
@@ -496,7 +498,7 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
     var isRefreshing by remember { mutableStateOf(false) }
     var showDeselect by remember { mutableStateOf(false) }
     var displayType by rememberSaveable { mutableStateOf(DisplayType.THUMBNAILS) }
-    var refreshTrigger by remember { mutableIntStateOf(0) }
+    val refreshTrigger by model.triggerQueueTracker.collectAsStateWithLifecycle()
     var rows by rememberSaveable { mutableIntStateOf(4) }
     val userSortBy by model.userSortBy.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -617,7 +619,6 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
                     CoroutineScope(Dispatchers.IO).launch {
                         isRefreshing = true
                         model.onRefresh()
-                        refreshTrigger++
                         isRefreshing = false
                     }
                 }
@@ -675,7 +676,7 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
             }
 
             // Monitor recently viewed items so they can be sent to the queue
-            LaunchedEffect(listState) {
+            LaunchedEffect(listState, refreshTrigger) {
                 snapshotFlow { listState.layoutInfo.visibleItemsInfo.map { it.index } }
                     .distinctUntilChanged()
                     .collect { visibleItems ->
