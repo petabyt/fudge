@@ -191,10 +191,8 @@ class ModuleGalleryViewModel(val module: ModuleInstance, val viewerViewModel: Vi
             viewerViewModel.update(file, galleryState?.objects?.size ?: 0, getThumbnail(file, -1), getThumbnail(file, 0), getThumbnail(file, 1))
             viewerViewModel.updateMetadata(getMetadata(file))
 
-            fun onCancel() {
-                CoroutineScope(Dispatchers.IO).launch {
-                    module.goBack(Screen.FILE_GALLERY, false)
-                }
+            suspend fun onCancel() {
+                module.goBack(Screen.FILE_GALLERY, false)
             }
 
             viewerViewModel.updateStatus("Switching to viewer...")
@@ -244,15 +242,13 @@ class ModuleDashboardModel(val module: ModuleInstance) : DashboardModel(module.m
             module.homeModelView.showDisconnectDialog(true)
         }
     }
-    override fun propChanged(pane: Widget) {
-        CoroutineScope(Dispatchers.IO).launch {
-            module.propChanged(pane) { job ->
-                if (job.isFinished) {
-                    paneStatusMap.update { it - pane.args.name }
-                } else {
-                    job.progressBarValue?.let { progress ->
-                        paneStatusMap.update { it + (pane.args.name to (progress / 100f)) }
-                    }
+    override suspend fun propChanged(pane: Widget) {
+        module.propChanged(pane) { job ->
+            if (job.isFinished) {
+                paneStatusMap.update { it - pane.args.name }
+            } else {
+                job.progressBarValue?.let { progress ->
+                    paneStatusMap.update { it + (pane.args.name to (progress / 100f)) }
                 }
             }
         }

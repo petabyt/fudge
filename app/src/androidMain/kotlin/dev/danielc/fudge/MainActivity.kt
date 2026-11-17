@@ -117,7 +117,7 @@ class MainActivity : ComponentActivity(), ComponentCallbacks2 {
                         hasLaunched = true
                         CoroutineScope(Dispatchers.IO).launch {
                             delay(200.milliseconds)
-                            startModule("dummymod", "camera")
+                            startModule("libfuji", "local-network")
                         }
                     }
                 }

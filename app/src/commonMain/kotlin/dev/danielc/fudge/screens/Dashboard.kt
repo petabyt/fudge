@@ -128,7 +128,7 @@ open class DashboardModel(
     val state = _state.asStateFlow()
     val paneStatusMap = MutableStateFlow<Map<String, Float>>(emptyMap())
 
-    open fun propChanged(pane: Widget) {}
+    open suspend fun propChanged(pane: Widget) {}
     open fun disconnect() {}
     open fun runCommand(line: String) {}
     open fun save() {}

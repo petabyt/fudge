@@ -7,6 +7,7 @@ import dev.danielc.fudge.SavedDeviceEntity.WiFiInfo
 actual open class NativeModule {
     var struct: ByteArray? = null
 
+    // Replace with kotlin atomics?
     private val lock = ReentrantLock()
     actual fun <T> withMapLock(action: () -> T): T {
         lock.lock()

@@ -97,6 +97,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.painterResource
@@ -196,6 +197,7 @@ abstract class GalleryViewModel(
 
     private suspend fun checkObject(obj: FilesystemObject, ref: ObjectHandle): Boolean {
         obj.lastUpdated = TimeSource.Monotonic.markNow()
+        if (ref.storageName != currentFilesystem.value?.storageName) return false
         if (obj.thumbnail == null && !obj.invalidThumbnail) {
             fulfillThumbnail(ref)
         } else if (obj.metadata == null && !obj.invalidMetadata) {
@@ -208,29 +210,33 @@ abstract class GalleryViewModel(
 
     // Returns true when work was done
     private suspend fun tick(): Boolean {
-        val storage = currentFilesystem.value ?: return false
-        val objects = storage.objects
-        if (objects.size < storage.nFiles) {
-            currentFilesystem.update {
-                val filled = objects.toMutableList()
-                while (filled.size < storage.nFiles) filled.add(FilesystemObject())
-                it?.copy(objects = filled)
+        filesystemMutex.withLock {
+            var storage = currentFilesystem.value ?: return false
+            var objects = storage.objects
+            if (objects.size < storage.nFiles) {
+                currentFilesystem.update {
+                    val filled = objects.toMutableList()
+                    while (filled.size < storage.nFiles) filled.add(FilesystemObject())
+                    it?.copy(objects = filled)
+                }
             }
-        }
-        if (queue.isEmpty()) {
-            // Iterate all recently checked objects fulfill them more (recently seen by user, should be priority)
-            val newest = objects.sortedBy { it.lastUpdated }
-            for (i in newest.indices) {
-                if (checkObject(objects[i], ObjectHandle(i, currentFilesystem.value?.storageName))) return true
+            storage = currentFilesystem.value ?: return false
+            objects = storage.objects
+            if (queue.isEmpty()) {
+                // Iterate all recently checked objects fulfill them more (recently seen by user, should be priority)
+                val newest = objects.sortedBy { it.lastUpdated }
+                for (i in newest.indices) {
+                    if (checkObject(objects[i], ObjectHandle(i, currentFilesystem.value?.storageName))) return true
+                }
+                return false
             }
-            return false
+            val ref = queueMutex.withLock {
+                queue.removeLastOrNull()
+            }
+            if (ref == null || ref.index >= objects.size || ref.index < 0) return false
+            val obj = objects[ref.index]
+            return checkObject(obj, ref)
         }
-        val ref = queueMutex.withLock {
-            queue.removeLastOrNull()
-        }
-        if (ref == null || ref.index >= objects.size || ref.index < 0) return false
-        val obj = objects[ref.index]
-        return checkObject(obj, ref)
     }
 
     fun start() {
@@ -240,12 +246,10 @@ abstract class GalleryViewModel(
                 val thread = thread
                 while (thread != null && !thread.isCancelled) {
                     if (!threadIsPaused) {
-                        filesystemMutex.withLock {
-                            if (tick()) continue
-                        }
+                        if (tick()) continue
                     }
                     try {
-                        delay(100.milliseconds)
+                        delay(1000.milliseconds)
                     } catch (_: CancellationException) {
                         break
                     }
@@ -256,6 +260,9 @@ abstract class GalleryViewModel(
 
     fun setPaused(v: Boolean) {
         threadIsPaused = v
+        if (!v) {
+            triggerQueueTracker.value++
+        }
     }
 
     fun stop() {
@@ -274,33 +281,32 @@ abstract class GalleryViewModel(
 
     fun switchStorageDevice(info: StorageInfo) {
         CoroutineScope(Dispatchers.IO).launch {
-            queueMutex.withLock {
-                queue.clear()
-                currentFilesystem.update {
-                    info
+            filesystemMutex.withLock {
+                queueMutex.withLock {
+                    queue.clear()
+                    currentFilesystem.update {
+                        info
+                    }
+                    sortObjectList()
+                    triggerQueueTracker.value++
                 }
-                sortObjectList()
-                triggerQueueTracker.value++
             }
         }
     }
 
     private fun updateObject(obj: ObjectHandle, block: (FilesystemObject) -> FilesystemObject) {
-        // Is coroutine launch necessary?
-        CoroutineScope(Dispatchers.IO).launch {
-            currentFilesystem.update {
-                // reject if storage device has changed
-                if (obj.storageName != null && it?.storageName != obj.storageName) return@update it
-                if (it == null) it else {
-                    val list = it.objects.toMutableList()
-                    while (list.size <= obj.index) list.add(FilesystemObject())
-                    val fsobj = list[obj.index]
-                    list[obj.index] = block(fsobj)
-                    it.copy(objects = list)
-                }
+        currentFilesystem.update {
+            // reject if storage device has changed
+            if (obj.storageName != null && it?.storageName != obj.storageName) return@update it
+            if (it == null) it else {
+                val list = it.objects.toMutableList()
+                while (list.size <= obj.index) list.add(FilesystemObject())
+                val fsobj = list[obj.index]
+                list[obj.index] = block(fsobj)
+                it.copy(objects = list)
             }
-            sortObjectList()
         }
+        sortObjectList()
     }
 
     fun updateThumbnail(obj: ObjectHandle, thumbData: ByteArray? = null) {
@@ -311,7 +317,7 @@ abstract class GalleryViewModel(
     }
     fun toggleIsSelected(obj: ObjectHandle) {
         updateObject(obj) { obj ->
-            CoroutineScope(Dispatchers.IO).launch {
+            runBlocking { // dumb
                 currentFilesystem.update { it?.copy(nSelectedObjects = if (obj.selected) it.nSelectedObjects - 1 else it.nSelectedObjects + 1) }
             }
             obj.copy(selected = !obj.selected)
@@ -616,7 +622,7 @@ fun Gallery(modifier: Modifier = Modifier, model: GalleryViewModel, onItemClick:
             isRefreshing = isRefreshing,
             onRefresh = {
                 if (!isZooming) {
-                    CoroutineScope(Dispatchers.IO).launch {
+                    scope.launch {
                         isRefreshing = true
                         model.onRefresh()
                         isRefreshing = false
