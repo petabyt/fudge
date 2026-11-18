@@ -103,6 +103,7 @@ dependencies {
 android {
     namespace = "dev.danielc.fudge"
     compileSdk = 37
+    ndkVersion = "29.0.14206865"
     defaultConfig {
         applicationId = "dev.danielc"
         minSdk = 24
