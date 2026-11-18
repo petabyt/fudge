@@ -19,13 +19,14 @@ ROOT = Path(__file__).resolve().parent.parent
 SERIAL = "emulator-5554"
 
 
-def camera_wifi(vcam, device):
+def camera_info(vcam, device):
     result = subprocess.run([vcam, device, "tcp", "--dump-camera-json"],
                             capture_output=True, text=True, timeout=30)
     if result.returncode:
         raise RuntimeError(f"Could not get camera info for {device}: {result.stderr.strip() or 'vcam failed'}")
     try:
-        wifi = json.loads(result.stdout)["wifi"]
+        info = json.loads(result.stdout)
+        wifi = info["wifi"]
         ssid, password = wifi["ssid"], wifi["password"]
         if not isinstance(ssid, str) or not ssid or not isinstance(password, str):
             raise ValueError("expected a nonempty SSID and a string password")
@@ -35,7 +36,21 @@ def camera_wifi(vcam, device):
             raise ValueError("Wi-Fi password must contain at least 8 characters")
     except (ValueError, KeyError, TypeError) as error:
         raise RuntimeError(f"Invalid Wi-Fi info for {device}: {error}") from error
-    return ssid, password
+    return info
+
+
+def camera_wifi(vcam, device):
+    wifi = camera_info(vcam, device)["wifi"]
+    return wifi["ssid"], wifi["password"]
+
+
+def vcam_command(vcam, device, filesystem=None):
+    command = ["stdbuf", "-oL", "-eL", vcam, device, "tcp", "--ip", "127.0.0.1"]
+    if filesystem:
+        if not Path(filesystem).is_dir():
+            raise RuntimeError(f"vcam filesystem directory not found: {filesystem}")
+        command.extend(["--fs", filesystem])
+    return command
 
 
 def netsim_wifi_args(help_text, ssid, password):
@@ -138,13 +153,12 @@ def stream_app_logcat(adb, finished):
         stop(logcat)
 
 
-def run_fuji_test(adb, no_test=False, processes=()):
+def run_emulator(adb, processes=()):
     def run(*args):
         return subprocess.run(adb + list(args), check=True, timeout=30)
 
     rule = ["OUTPUT", "-d", "192.168.0.1", "-p", "tcp", "-m", "multiport",
             "--dports", "55740,55741,55742", "-j", "DNAT", "--to-destination", "10.0.2.2"]
-    instrumentation = None
     installed = False
     logcat_finished = threading.Event()
     logcat_thread = None
@@ -156,38 +170,19 @@ def run_fuji_test(adb, no_test=False, processes=()):
         run("logcat", "-c")
         logcat_thread = threading.Thread(target=stream_app_logcat, args=(adb, logcat_finished), daemon=True)
         logcat_thread.start()
-        if no_test:
-            print("Emulator ready. Open FantasyFudge to connect; press Ctrl+C to stop.", flush=True)
-            try:
-                while True:
-                    for name, process in processes:
-                        if process.poll() is not None:
-                            raise RuntimeError(f"{name} exited ({process.returncode})")
-                    time.sleep(1)
-            except KeyboardInterrupt:
-                print("Stopping emulator rig.", flush=True)
-                return
-        instrumentation = subprocess.Popen(adb + ["shell", "am", "instrument", "-w", "-e", "class",
-            "dev.danielc.fudge.EmulatorCameraTest",
-            "dev.danielc.fantasyfudge.nightly.test/androidx.test.runner.AndroidJUnitRunner"],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        deadline = time.monotonic() + 150
-        while time.monotonic() < deadline:
-            if instrumentation.poll() is not None:
-                output = instrumentation.communicate()[0]
-                print(output, end="", flush=True)
-                if instrumentation.returncode or "OK (1 test)" not in output:
-                    raise RuntimeError("Fuji instrumentation test failed")
-                print("Fuji camera session established.")
-                return
-            approve_dialog(adb)
-            time.sleep(1)
-        raise RuntimeError("camera session not established within 150 seconds")
+        print("Emulator ready. Open FantasyFudge to connect; press Ctrl+C to stop.", flush=True)
+        try:
+            while True:
+                for name, process in processes:
+                    if process.poll() is not None:
+                        raise RuntimeError(f"{name} exited ({process.returncode})")
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("Stopping emulator rig.", flush=True)
     finally:
         logcat_finished.set()
         if logcat_thread:
             logcat_thread.join()
-        stop(instrumentation)
         if installed:
             try:
                 run("shell", "iptables", "-t", "nat", "-D", *rule)
@@ -195,18 +190,18 @@ def run_fuji_test(adb, no_test=False, processes=()):
                 print(f"warning: could not remove emulator NAT rule: {error}", file=sys.stderr)
 
 
-def main():
+def emulator_main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--show-ui", action="store_true", help="show the emulator window")
-    parser.add_argument("--no-test", action="store_true", help="keep the rig running for manual testing")
     parser.add_argument("--device", default="fuji_x_t5", help="vcam camera model (default: fuji_x_t5)")
-    args = parser.parse_args()
+    parser.add_argument("--external-vcam", action="store_true", help="let another process manage the TCP camera")
+    args = parser.parse_args(argv)
     sdk = Path(os.environ.setdefault("ANDROID_HOME", str(Path.home() / "Android/Sdk"))).expanduser()
     vcam = os.environ.get("VCAM_BINARY") or shutil.which("vcam") or "/usr/local/vcam"
     vcam = executable(vcam)
     ssid, password = camera_wifi(vcam, args.device)
+    camera_command = vcam_command(vcam, args.device, os.environ.get("VCAM_FILESYSTEM"))
     apk = os.environ.get("FUDGE_APK", str(ROOT / "app/build/outputs/apk/nightly/release/app-nightly-release.apk"))
-    test_apk = os.environ.get("FUDGE_TEST_APK", str(ROOT / "app/build/outputs/apk/androidTest/nightly/release/app-nightly-release-androidTest.apk"))
     avd = os.environ.get("AVD_NAME", "fudge-ci")
     artifacts = Path(os.environ.get("ARTIFACTS", "test-results/emulator"))
     artifacts.mkdir(parents=True, exist_ok=True)
@@ -254,13 +249,13 @@ def main():
         emulator_process = subprocess.Popen(emulator_command, stdout=subprocess.PIPE,
                                            stderr=subprocess.STDOUT, text=True, errors="replace")
         output_thread = show_output(emulator_process, artifacts / "emulator.log")
-        with (artifacts / "vcam.log").open("w") as log:
-            vcam_process = subprocess.Popen(["stdbuf", "-oL", "-eL", vcam, args.device, "tcp",
-                                              "--ip", "127.0.0.1"], stdout=log, stderr=subprocess.STDOUT)
+        if not args.external_vcam:
+            with (artifacts / "vcam.log").open("w") as log:
+                vcam_process = subprocess.Popen(camera_command, stdout=log, stderr=subprocess.STDOUT)
         deadline = time.monotonic() + 240
         while time.monotonic() < deadline:
             for name, process in (("emulator", emulator_process), ("vcam", vcam_process)):
-                if process.poll() is not None:
+                if process and process.poll() is not None:
                     raise RuntimeError(f"{name} exited during boot ({process.returncode}); see {artifacts / (name + '.log')}")
             try:
                 boot = subprocess.run(adb + ["shell", "getprop", "sys.boot_completed"],
@@ -278,15 +273,12 @@ def main():
                        check=True, timeout=30)
         print("Emulator booted; installing APKs.", flush=True)
         subprocess.run(adb + ["install", "-r", apk], check=True, timeout=120)
-        if not args.no_test:
-            subprocess.run(adb + ["install", "-r", test_apk], check=True, timeout=120)
         for permission in ("BLUETOOTH_SCAN", "BLUETOOTH_CONNECT", "NEARBY_WIFI_DEVICES"):
             subprocess.run(adb + ["shell", "pm", "grant", "dev.danielc.fantasyfudge.nightly",
                                   f"android.permission.{permission}"], check=True, timeout=30)
-        run_fuji_test(adb, no_test=args.no_test,
-                      processes=(("emulator", emulator_process), ("vcam", vcam_process)))
-        if not args.no_test and (vcam_process.poll() is not None or emulator_process.poll() is not None):
-            raise RuntimeError("emulator or vcam exited during the test")
+        run_emulator(adb,
+                        processes=tuple((name, process) for name, process in
+                                        (("emulator", emulator_process), ("vcam", vcam_process)) if process))
         failed = False
     finally:
         if failed and emulator_process and emulator_process.poll() is None:
@@ -322,11 +314,3 @@ def main():
                     os.environ.pop("ANDROID_AVD_HOME", None)
                 else:
                     os.environ["ANDROID_AVD_HOME"] = original_avd_home
-
-
-if __name__ == "__main__":
-    try:
-        main()
-    except (RuntimeError, OSError, subprocess.SubprocessError) as error:
-        print(f"Emulator test failed: {error}", file=sys.stderr)
-        sys.exit(1)

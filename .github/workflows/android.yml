@@ -91,14 +91,32 @@ jobs:
           cmake -S .ci-vcam -B .ci-vcam/build -G Ninja
           cmake --build .ci-vcam/build
           cmake --install .ci-vcam/build
+      - name: Cache Fuji filesystem archive
+        id: fuji-cache
+        uses: actions/cache@v4
+        with:
+          path: .ci-cache/fuji_xa2_sd.tar.gz
+          key: fuji-xa2-sd-archive-v1
+      - name: Download Fuji filesystem archive
+        if: steps.fuji-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .ci-cache
+          curl -fL --retry 3 -o .ci-cache/fuji_xa2_sd.tar.gz https://github.com/petabyt/vcam/releases/download/card-samples/fuji_xa2_sd.tar.gz
+      - name: Extract Fuji filesystem
+        run: |
+          mkdir -p .ci-fuji
+          tar -xzf .ci-cache/fuji_xa2_sd.tar.gz -C .ci-fuji
+          test -d .ci-fuji/fuji_sd
       - name: Run Fuji connection test
-        run: python3 test/emulator_test.py
+        env:
+          VCAM_FILESYSTEM: ${{ github.workspace }}/.ci-fuji/fuji_sd
+        run: python3 test/camera_matrix.py --case xa2-wifi
       - name: Upload emulator diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: android-emulator-diagnostics
-          path: test-results/emulator/
+          path: test-results/camera-matrix/
           if-no-files-found: ignore
 
   publish:

@@ -19,6 +19,26 @@ class EmulatorCameraTest {
     @get:Rule(order = 1)
     val activityRule = ActivityScenarioRule(MainActivity::class.java)
 
+    private fun assertGalleryThumbnail(mod: ModuleInstance) {
+        if (Screen.FILE_GALLERY !in mod.homeModelView.homeState.value.supportedNavBarScreenList) fail("Camera does not expose a gallery")
+        runBlocking {
+            val rc = mod.switchScreen(Screen.FILE_GALLERY, true, {})
+            if (rc.failed) fail("Failed to open gallery: $rc")
+        }
+        val deadline = System.nanoTime() + 30_000_000_000L
+        while (System.nanoTime() < deadline) {
+            val filesystem = mod.galleryViewModel.currentFilesystemStateFlow.value
+            if (filesystem?.objects?.any { it.thumbnail != null } == true) {
+                println("Gallery thumbnail decoded successfully")
+                return
+            }
+            Thread.sleep(100)
+        }
+        val filesystem = mod.galleryViewModel.currentFilesystemStateFlow.value
+        fail("No decoded gallery thumbnail: files=${filesystem?.nFiles}, " +
+            "objects=${filesystem?.objects?.size}, invalid=${filesystem?.objects?.count { it.invalidThumbnail }}")
+    }
+
     @Test
     fun connectsToFujiCamera() {
         var mod: ModuleInstance? = null
@@ -52,6 +72,7 @@ class EmulatorCameraTest {
                     }
                 }
             }
+            assertGalleryThumbnail(mod)
         }
     }
 
@@ -75,7 +96,7 @@ class EmulatorCameraTest {
 
         if (waitForCondition(1000) { mod != null }) fail("Module instance creation timeout")
         if (mod == null) { fail("") } else {
-            if (waitForCondition(15000) { mod.isConnected }) fail("Connecting timeout")
+            if (waitForCondition(30000) { mod.isConnected }) fail("Connecting timeout")
             if (waitForCondition(1000) { mod.currentScreen == Screen.DASHBOARD }) fail("Dashboard screen timeout")
             println(mod.getVerboseLog())
             runBlocking {
@@ -94,6 +115,7 @@ class EmulatorCameraTest {
                 try {
                     val rc = mod.propChanged(Widget.Button(Widget.Properties("switch-wifi", "")))
                     if (rc != PakReturnCode.NONE) fail("propChanged nonzero $rc")
+                    // TODO: Expose 'connect' events and possibly other events so it can be consumed by tests
                     if (!waitForEvent(15000) { it.type == UiEvent.UiEventType.SWITCH_SCREEN && it.screen == Screen.CONNECT_SECONDARY })
                         fail("Failed to enter secondary connect screen")
                     if (!waitForEvent(30000) { it.type == UiEvent.UiEventType.GO_BACK_SCREEN })
@@ -104,6 +126,7 @@ class EmulatorCameraTest {
                     println(mod.getVerboseLog())
                 }
             }
+            assertGalleryThumbnail(mod)
         }
     }
 }
