@@ -6,18 +6,14 @@ import androidx.compose.ui.platform.ClipEntry
 import dev.danielc.fudge.SavedDeviceEntity.WiFiInfo
 import dev.danielc.fudge.screens.LiveviewModel
 
-fun getBuildInfo(): BuildInfo {
-    return mainBuildInfo!!
+expect object BuildInfo {
+    val time: String
+    val isNightly: Boolean
+    val isDebug: Boolean
+    val packageName: String
+    val version: String
+    val osVersion: String
 }
-var mainBuildInfo: BuildInfo? = null
-data class BuildInfo(
-    val time: String,
-    val isNightly: Boolean,
-    val isDebug: Boolean,
-    val packageName: String,
-    val version: String,
-    val osVersion: String,
-)
 
 expect fun Timestamp.toEpochMillis(): Long
 expect fun Timestamp.hoursSince(other: Timestamp): Double
@@ -41,6 +37,7 @@ expect object NativeRuntime {
 
 @Composable
 expect fun WebView(url: String, transparent: Boolean = true)
+
 @Composable
 expect fun WebViewHTML(html: String, transparent: Boolean = true)
 
@@ -89,7 +86,6 @@ expect object FileLayer {
 }
 
 expect open class NativeModule() {
-    fun <T> withMapLock(action: () -> T): T
     fun onFindConnection(job: Int): Int
     fun onTryConnectUSB(device: USB.Device, saved: SavedDeviceInfo?, job: Int): Int
     fun onTryConnectWiFi(adapter: WiFi.Adapter, saved: SavedDeviceInfo?, job: Int): Int
@@ -115,6 +111,9 @@ expect open class NativeModule() {
     fun setBluetoothDevice(dev: Bluetooth.Device?)
     fun setWiFiDevice(dev: WiFi.Adapter?)
     fun takeAndroidAssocationId(): Int?
+
+    // Non suspending lock for job map
+    fun <T> withMapLock(action: () -> T): T
 }
 
 expect object Bluetooth {
@@ -147,9 +146,9 @@ expect object Bluetooth {
     fun getBondedDevices(): Array<Device>
     fun interruptAll()
     fun checkPermission(): Boolean
-    suspend fun requestConnectPermission()
+    fun requestConnectPermission()
     fun fromAddress(address: String): Device
-    suspend fun pairWithDeviceCompanion(filters: List<BtFilter>, companionName: String, deviceType: dev.danielc.fudge.Device?, scanCallback: ScanCallback, deleteOldBond: Boolean): PakReturnCode
+    fun pairWithDeviceCompanion(filters: List<BtFilter>, companionName: String, deviceType: dev.danielc.fudge.Device?, scanCallback: ScanCallback, deleteOldBond: Boolean): PakReturnCode
     fun openEnableBluetoothDialog()
     val isBluetoothEnabled: Boolean
 }
@@ -173,8 +172,8 @@ expect object WiFi {
     }
     fun interruptAll()
     fun checkPermission(): Boolean
-    suspend fun requestConnectPermission()
-    suspend fun connectToAccessPointCompanion(
+    fun requestConnectPermission()
+    fun connectToAccessPointCompanion(
         apFilters: MutableList<ApFilter>,
         companionName: String,
         wifiCallback: WiFiDiscoveryCallback,
@@ -184,7 +183,9 @@ expect object WiFi {
     val isWiFiEnabled: Boolean
     val isVpnActive: Boolean
 
-    // System doesn't support querying APs or requesting connection, user must be prompted to connect manually
+    fun isHandlingConflictingConnections(a: Adapter, b: Adapter): Boolean
+
+    // true if system doesn't support querying APs or requesting connection, user must be prompted to connect manually
     val requiresManualAccessPointConnection: Boolean
 
     class ApFilter(
@@ -217,10 +218,6 @@ expect object WiFi {
 
 expect object Pak {
     fun interruptAll()
-    var callbacks: Callbacks?
-    abstract class Callbacks() {
-        abstract fun onDeviceAppearance(address: String?, isNearby: Boolean)
-    }
 }
 
 expect class ModuleLiveviewModel(mod: ModuleInstance): LiveviewModel {

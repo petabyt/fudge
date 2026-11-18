@@ -64,7 +64,7 @@ actual object WiFi {
         return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
     }
 
-    actual suspend fun requestConnectPermission() {
+    actual fun requestConnectPermission() {
         // TODO: 'Can request only one set of permissions at a time'
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
             requirePermissionBlocking(Manifest.permission.ACCESS_LOCAL_NETWORK)
@@ -94,7 +94,7 @@ actual object WiFi {
     /** Opens an Android 10+ popup to prompt the user to select a WiFi network
      * When bssid is provided in the filter, there will be no prompt at all.
      */
-    suspend fun connectToAccessPoint(filter: ApFilter, callback: WiFiDiscoveryCallback): PakReturnCode {
+    fun connectToAccessPoint(filter: ApFilter, callback: WiFiDiscoveryCallback): PakReturnCode {
         val ctx: Context = activity
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             return PakReturnCode.UNSUPPORTED
@@ -212,7 +212,7 @@ actual object WiFi {
 
     /// Opens a dialog to save an access point as a companion device
     /// Then uses NetworkRequest to connect to the access point
-    actual suspend fun connectToAccessPointCompanion(
+    actual fun connectToAccessPointCompanion(
         apFilters: MutableList<ApFilter>,
         companionName: String,
         wifiCallback: WiFiDiscoveryCallback,
@@ -309,12 +309,12 @@ actual object WiFi {
                         bssid = scanResult.BSSID
                     )
                 }
-            } catch (e: Pak.CancelException) {
+            } catch (_: Pak.CancelException) {
                 wifiCallback.onUserCancelled()
                 return PakReturnCode.CANCELLED
-            } catch (e: SecurityException) {
+            } catch (_: SecurityException) {
                 return PakReturnCode.PERMISSION
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 return PakReturnCode.UNDEFINED
             }
         }
@@ -337,7 +337,7 @@ actual object WiFi {
         })
     }
 
-    suspend fun connectToAccessPointCompanion(
+    fun connectToAccessPointCompanion(
         apFilter: MutableList<ApFilter>,
         companionName: String,
         wifiCallback: WiFiDiscoveryCallback,
@@ -387,7 +387,7 @@ actual object WiFi {
     /** Determine if the device is handling two different WiFi connections at the same time, on the same band.
      * On Android 12+ devices, this causes a 2x rx/tx speed hit.
      * https://source.android.com/docs/core/connect/wifi-sta-sta-concurrency#local-only  */
-    fun isHandlingConflictingConnections(a: Network?, b: Network?): Boolean {
+    fun isHandlingConflictingConnections(a: Network, b: Network): Boolean {
         val connectivityManager = activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             if (isNetworkValid(a) && isNetworkValid(b)) {
@@ -402,6 +402,10 @@ actual object WiFi {
             }
         }
         return false
+    }
+
+    actual fun isHandlingConflictingConnections(a: Adapter, b: Adapter): Boolean {
+        return isHandlingConflictingConnections(a.net ?: return false, b.net ?: return false)
     }
 
     fun isNetworkValid(net: Network?): Boolean {
@@ -525,6 +529,7 @@ actual object WiFi {
         var apAssociation: AssociationInfo? = null
         var net: Network?
         var callback: ConnectivityManager.NetworkCallback? = null
+        @CalledFromNative
         var handle: Long
 
         init {
@@ -560,6 +565,7 @@ actual object WiFi {
             }
     }
 
+    @CalledFromNative
     actual data class ApFilter actual constructor(
         actual val ssidPattern: String?,
         actual val bssid: String?,

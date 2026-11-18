@@ -72,21 +72,6 @@ class MainActivity : ComponentActivity(), ComponentCallbacks2 {
         }
     }
 
-    init {
-        mainBuildInfo = BuildInfo(
-            time = SimpleDateFormat("MMMM dd yyyy", Locale.getDefault()).format(
-                Date(
-                    BuildConfig.BUILD_TIME
-                )
-            ),
-            isNightly = BuildConfig.FLAVOR == "nightly",
-            isDebug = BuildConfig.DEBUG,
-            packageName = BuildConfig.APPLICATION_ID,
-            version = BuildConfig.VERSION_NAME,
-            osVersion = "Android ${Build.VERSION.SDK_INT}"
-        )
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -112,7 +97,7 @@ class MainActivity : ComponentActivity(), ComponentCallbacks2 {
             }
             var hasLaunched by rememberSaveable { mutableStateOf(false) }
             if (!hasLaunched) {
-                if (false && getBuildInfo().isDebug) {
+                if (false && BuildConfig.DEBUG) {
                     LaunchedEffect(Unit) {
                         hasLaunched = true
                         CoroutineScope(Dispatchers.IO).launch {

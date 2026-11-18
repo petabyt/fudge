@@ -30,7 +30,6 @@ actual object Pak {
 
     /// Hold a weak reference to main activity for permission requests
     var weakCtx: WeakReference<Activity>? = null
-    actual var callbacks: Callbacks? = null
 
     fun setupAndroidContext(ctx: Activity?) {
         weakCtx = WeakReference<Activity>(ctx)
@@ -53,7 +52,6 @@ actual object Pak {
         cancellableRunnable.cancelAll()
     }
 
-    @get:Suppress("unused")
     val activity: Activity get() = weakCtx!!.get()!!
 
     @Suppress("unused")
@@ -93,7 +91,7 @@ actual object Pak {
         ctx.startIntentSenderForResult(sender, 1001, null, 0, 0, 0)
     }
 
-    suspend fun requirePermissionBlocking(permission: String?): Boolean {
+    fun requirePermissionBlocking(permission: String?): Boolean {
         val ctx: Activity = activity
         if (ctx.checkSelfPermission(permission!!) == PackageManager.PERMISSION_GRANTED) return true
         Handler(ctx.mainLooper).post {
@@ -139,8 +137,7 @@ actual object Pak {
             for (i in list) {
                 try {
                     deviceManager.disassociate(i)
-                } catch (ignored: NullPointerException) {
-                }
+                } catch (_: NullPointerException) { }
             }
         }
     }
@@ -170,7 +167,7 @@ actual object Pak {
     }
 
     @Throws(SecurityException::class, CancelException::class)
-    suspend fun companionAssociateGetResultBlocking(manager: CompanionDeviceManager, request: AssociationRequest): Intent? {
+    fun companionAssociateGetResultBlocking(manager: CompanionDeviceManager, request: AssociationRequest): Intent? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             throw SecurityException("Unsupported")
         }
@@ -233,9 +230,32 @@ actual object Pak {
 
     class CancelException : Exception()
 
-    /// For cancelling blocking routines
-    /// Can be used like new CancellableRunnable().run(() => {return 0;})
     class CancellableRunnable {
+        var threads = ConcurrentHashMap.newKeySet<Thread>()
+        fun run(block: () -> PakReturnCode): PakReturnCode {
+            val rc = arrayOf(PakReturnCode.NONE)
+            val thread = Thread {
+                rc[0] = block()
+            }
+            threads.add(thread)
+            try {
+                thread.start()
+                thread.join()
+            } catch (_: InterruptedException) {
+                // This thread shouldn't be interrupted
+            }
+            threads.remove(thread)
+            return rc[0]
+        }
+
+        fun cancelAll() {
+            for (t in threads) {
+                t.interrupt()
+            }
+        }
+    }
+
+    class CoroutineCancellableRunnable {
         private val activeJobs = ConcurrentHashMap.newKeySet<Job>()
         suspend fun run(block: suspend () -> PakReturnCode): PakReturnCode = coroutineScope {
             val job = launch(Dispatchers.IO) {}
@@ -252,10 +272,6 @@ actual object Pak {
         }
     }
 
-    actual abstract class Callbacks {
-        actual abstract fun onDeviceAppearance(address: String?, isNearby: Boolean)
-    }
-
     @RequiresApi(api = Build.VERSION_CODES.S)
     class MyCompanionDeviceService : CompanionDeviceService() {
         override fun onCreate() {
@@ -266,13 +282,13 @@ actual object Pak {
         override fun onDeviceAppeared(address: String) {
             super.onDeviceAppeared(address)
             Log.d(TAG, "onDeviceAppeared: $address")
-            if (callbacks != null) callbacks!!.onDeviceAppearance(address, true)
+            Runtime.onDeviceAppearance(address, true)
         }
 
         override fun onDeviceDisappeared(address: String) {
             super.onDeviceDisappeared(address)
             Log.d(TAG, "onDeviceDisappeared")
-            if (callbacks != null) callbacks!!.onDeviceAppearance(address, false)
+            Runtime.onDeviceAppearance(address, false)
         }
 
         override fun onDevicePresenceEvent(event: DevicePresenceEvent) {

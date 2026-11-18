@@ -100,7 +100,7 @@ actual object FileLayer {
         val resolver = Pak.activity.contentResolver
         try {
             return Handle(resolver.openFileDescriptor(ref.contentUri, "r") ?: return null, ref.contentUri)
-        } catch (ignored: Exception) { return null }
+        } catch (_: Exception) { return null }
     }
 
     actual fun doesFileExist(filename: String, dir: Directory): Boolean {

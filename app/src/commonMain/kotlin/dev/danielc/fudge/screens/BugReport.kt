@@ -20,8 +20,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import dev.danielc.fudge.BuildInfo
 import dev.danielc.fudge.Http
-import dev.danielc.fudge.getBuildInfo
 import dev.danielc.fudge.ui.LargeCustomAlertDialog
 import dev.danielc.fudge.ui.PreviewPixel9ProDark
 import kotlinx.coroutines.CoroutineScope
@@ -35,18 +35,18 @@ import org.jetbrains.compose.resources.stringResource
 import fantasyfudge.app.generated.resources.*
 
 data class BugReport(
-    val version: String = getBuildInfo().version,
-    val app: String = getBuildInfo().packageName,
-    val os: String = getBuildInfo().osVersion,
+    val version: String = BuildInfo.version,
+    val app: String = BuildInfo.packageName,
+    val os: String = BuildInfo.osVersion,
     val description: String = "",
     val getVerboseLog: (() -> String) = {""},
     val moduleInstanceInfo: String = "",
 )
 
 data class FeedbackReport(
-    val version: String = getBuildInfo().version,
-    val app: String = getBuildInfo().packageName,
-    val os: String = getBuildInfo().osVersion,
+    val version: String = BuildInfo.version,
+    val app: String = BuildInfo.packageName,
+    val os: String = BuildInfo.osVersion,
     val description: String = "",
 )
 

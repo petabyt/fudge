@@ -35,7 +35,7 @@ import kotlin.time.TimeSource
 /**
  * To note that a Kotlin function is for use through JNI/C
  */
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS, AnnotationTarget.CONSTRUCTOR)
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS, AnnotationTarget.CONSTRUCTOR, AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.BINARY)
 annotation class CalledFromNative
 
@@ -704,7 +704,7 @@ class ModuleInstance(var request: ModuleInstanceRequest, val homeModelView: Modu
     fun addWiFiConnection(filter: WiFi.ApFilter, setupOption: String, gotoScreen: Boolean = true) {
         connectingModel.lastWiFiApFilter = filter
         connectingModel.lastWiFiSetupOption = setupOption
-
+        //connectingModel.reset() // TODO
         connectingModel.secondaryConnectionJob = CoroutineScope(Dispatchers.IO).launch {
             if (gotoScreen) homeModelView.goToScreen(Screen.CONNECT_SECONDARY, false)
             connectingModel.isSecondaryConnection = true

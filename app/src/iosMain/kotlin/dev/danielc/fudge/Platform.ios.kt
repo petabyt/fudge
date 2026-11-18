@@ -7,7 +7,18 @@ import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readBytes
 import kotlinx.cinterop.reinterpret
-import platform.Foundation.*
+import platform.Foundation.NSHTTPURLResponse
+import platform.Foundation.NSMutableURLRequest
+import platform.Foundation.NSString
+import platform.Foundation.NSURL
+import platform.Foundation.NSURLSession
+import platform.Foundation.NSUTF8StringEncoding
+import platform.Foundation.create
+import platform.Foundation.dataTaskWithRequest
+import platform.Foundation.dataUsingEncoding
+import platform.Foundation.setHTTPBody
+import platform.Foundation.setHTTPMethod
+import platform.Foundation.setValue
 import platform.darwin.DISPATCH_TIME_FOREVER
 import platform.darwin.dispatch_semaphore_create
 import platform.darwin.dispatch_semaphore_signal
@@ -90,4 +101,19 @@ actual object Http {
 @OptIn(ExperimentalComposeUiApi::class)
 actual fun createClipEntry(label: String, text: String): ClipEntry {
     return ClipEntry.withPlainText(text)
+}
+
+actual object BuildInfo {
+    actual val time: String
+        get() = TODO("Not yet implemented")
+    actual val isNightly: Boolean
+        get() = TODO("Not yet implemented")
+    actual val isDebug: Boolean
+        get() = TODO("Not yet implemented")
+    actual val packageName: String
+        get() = TODO("Not yet implemented")
+    actual val version: String
+        get() = TODO("Not yet implemented")
+    actual val osVersion: String
+        get() = TODO("Not yet implemented")
 }

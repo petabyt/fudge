@@ -58,6 +58,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import dev.danielc.fudge.BuildInfo
 import dev.danielc.fudge.ConnectableDevice
 import dev.danielc.fudge.Device
 import dev.danielc.fudge.FileLayer
@@ -66,7 +67,6 @@ import dev.danielc.fudge.ModuleManifest
 import dev.danielc.fudge.NativeRuntime
 import dev.danielc.fudge.Runtime
 import dev.danielc.fudge.SavedDeviceEntity
-import dev.danielc.fudge.getBuildInfo
 import dev.danielc.fudge.ui.ClickableCard
 import dev.danielc.fudge.ui.DefaultNavHost
 import dev.danielc.fudge.ui.DeleteDialog
@@ -416,9 +416,9 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
                     TopAppBar(
                         colors = TopAppBarDefaults.topAppBarColors(),
                         title = {
-                            if (getBuildInfo().isDebug) {
+                            if (BuildInfo.isDebug) {
                                 Text("${stringResource(Res.string.app_name)} ${stringResource(Res.string.debug_tag)}")
-                            } else if (getBuildInfo().isNightly) {
+                            } else if (BuildInfo.isNightly) {
                                 Text("${stringResource(Res.string.app_name)} ${stringResource(Res.string.nightly_tag)}")
                             } else {
                                 Text(stringResource(Res.string.app_name))

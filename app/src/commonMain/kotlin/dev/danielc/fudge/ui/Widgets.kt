@@ -432,7 +432,7 @@ fun DefaultNavHost(
     modifier: Modifier = Modifier,
     route: String? = null,
     builder: NavGraphBuilder.() -> Unit
-): Unit {
+) {
     NavHost(navController, startDestination = startDestination, modifier = modifier, route = route, builder = builder,
         enterTransition = {
             if (targetState.destination.route == "disconnected") {

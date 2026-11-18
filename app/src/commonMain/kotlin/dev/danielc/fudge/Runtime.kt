@@ -75,11 +75,16 @@ object Runtime {
     val localGalleryViewModel = LocalGalleryViewModel()
     var connectableDevices = MutableStateFlow<List<ConnectableDevice>>(emptyList())
     var moduleManifests = MutableStateFlow(listOf<ModuleManifest>())
+    var moduleInstanceCallback: ((ModuleInstance) -> Unit)? = null
+    var moduleInstances = mutableMapOf<Int, ModuleInstance>()
+    private var moduleCounter = 0
+
     var savedDevices: StateFlow<List<SavedDeviceEntity>> = NativeRuntime.getDatabaseNullable()?.deviceDao()?.getAllDevices()?.stateIn(
             CoroutineScope(Dispatchers.IO),
             SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
             emptyList()
         ) ?: MutableStateFlow(listOf()) // Compose preview fallback
+
     val appSettings: StateFlow<AppSettingEntity> = NativeRuntime.getDatabaseNullable()?.settingsDao()?.getFlow()
         ?.map { it ?: AppSettingEntity() }
         ?.stateIn(
@@ -88,18 +93,9 @@ object Runtime {
             AppSettingEntity()
         ) ?: MutableStateFlow(AppSettingEntity(1, "/home/daniel/Pictures")) // Compose preview fallback
 
-    var moduleInstanceCallback: ((ModuleInstance) -> Unit)? = null
-    var moduleInstances = mutableMapOf<Int, ModuleInstance>()
-    private var moduleCounter = 0
-
-    val callbacks = object : Pak.Callbacks() {
-        override fun onDeviceAppearance(address: String?, isNearby: Boolean) {
-            if (address != null) {
-                nearbyDevices.value = (if (isNearby) nearbyDevices.value + address else nearbyDevices.value - address).toMutableSet()
-            }
-        }
-        init {
-            Pak.callbacks = this
+    fun onDeviceAppearance(address: String?, isNearby: Boolean) {
+        if (address != null) {
+            nearbyDevices.value = (if (isNearby) nearbyDevices.value + address else nearbyDevices.value - address).toMutableSet()
         }
     }
 

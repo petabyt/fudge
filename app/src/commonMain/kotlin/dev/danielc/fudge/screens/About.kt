@@ -33,8 +33,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import dev.danielc.fudge.BuildInfo
 import dev.danielc.fudge.Runtime
-import dev.danielc.fudge.getBuildInfo
 import dev.danielc.fudge.ui.theme.FudgeTheme
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -108,7 +108,7 @@ fun InfoScreen(navController: NavHostController = rememberNavController()) {
             Column(Modifier.padding(innerPadding).padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Column {
                     Text("Copyright (C) ${stringResource(Res.string.app_name)} 2026, license TBD")
-                    Text("Compile date: ${getBuildInfo().time}")
+                    Text("Compile date: ${BuildInfo.time}")
                 }
                 DependencyList()
             }

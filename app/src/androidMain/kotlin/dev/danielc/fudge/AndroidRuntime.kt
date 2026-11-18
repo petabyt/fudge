@@ -54,7 +54,7 @@ actual fun Timestamp.Companion.now(): Timestamp {
 }
 
 actual object NativeRuntime {
-    val TAG = "AndroidRuntime"
+    const val TAG = "AndroidRuntime"
     var hasInited: Boolean = false
     private var databaseInstance: AppDatabase? = null
     fun setup(ctx: Context) {
@@ -184,7 +184,7 @@ actual object NativeRuntime {
 
             fd.close()
             return bitmap.asImageBitmap()
-        } catch (ignored: Exception) {
+        } catch (_: Exception) {
             fd.close()
             return null
         }
