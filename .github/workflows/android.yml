@@ -97,13 +97,12 @@ jobs:
         with:
           path: .ci-cache/fuji_xa2_sd.tar.gz
           key: fuji-xa2-sd-archive-v1
-      - name: Download Fuji filesystem archive
-        if: steps.fuji-cache.outputs.cache-hit != 'true'
+      - name: Prepare Fuji filesystem
         run: |
           mkdir -p .ci-cache
-          curl -fL --retry 3 -o .ci-cache/fuji_xa2_sd.tar.gz https://github.com/petabyt/vcam/releases/download/card-samples/fuji_xa2_sd.tar.gz
-      - name: Extract Fuji filesystem
-        run: |
+          if [ ! -f .ci-cache/fuji_xa2_sd.tar.gz ]; then
+            curl -fL --retry 3 -o .ci-cache/fuji_xa2_sd.tar.gz https://github.com/petabyt/vcam/releases/download/card-samples/fuji_xa2_sd.tar.gz
+          fi
           mkdir -p .ci-fuji
           tar -xzf .ci-cache/fuji_xa2_sd.tar.gz -C .ci-fuji
           test -d .ci-fuji/fuji_sd
@@ -111,6 +110,12 @@ jobs:
         env:
           VCAM_FILESYSTEM: ${{ github.workspace }}/.ci-fuji/fuji_sd
         run: python3 test/camera_matrix.py --case xa2-wifi
+      - name: Run Fuji Bluetooth handover tests
+        env:
+          VCAM_FILESYSTEM: ${{ github.workspace }}/.ci-fuji/fuji_sd
+        run: >-
+          xvfb-run -a python3 test/camera_matrix.py --vcam-dir .ci-vcam
+          --case xh1-ble --case xt30-ble --case xt5-ble
       - name: Upload emulator diagnostics
         if: always()
         uses: actions/upload-artifact@v4
