@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.danielc.fudge.screens.UiEvent
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
@@ -20,7 +21,12 @@ class EmulatorCameraTest {
     val activityRule = ActivityScenarioRule(MainActivity::class.java)
 
     private fun assertGalleryThumbnail(mod: ModuleInstance) {
-        if (Screen.FILE_GALLERY !in mod.homeModelView.homeState.value.supportedNavBarScreenList) fail("Camera does not expose a gallery")
+        val galleryAvailable = runBlocking {
+            withTimeoutOrNull(15000.milliseconds) {
+                mod.homeModelView.homeState.first { Screen.FILE_GALLERY in it.supportedNavBarScreenList }
+            } != null
+        }
+        if (!galleryAvailable) fail("Camera does not expose a gallery: ${mod.homeModelView.homeState.value}; ${mod.getVerboseLog()}")
         runBlocking {
             val rc = mod.switchScreen(Screen.FILE_GALLERY, true, {})
             if (rc.failed) fail("Failed to open gallery: $rc")
