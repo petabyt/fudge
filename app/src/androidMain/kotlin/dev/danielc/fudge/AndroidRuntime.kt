@@ -84,7 +84,7 @@ actual object NativeRuntime {
             val deviceManager = Pak.activity.getSystemService(Context.COMPANION_DEVICE_SERVICE) as CompanionDeviceManager
             if (saved.bluetoothMacAddress != null) {
                 deviceManager.disassociate(saved.bluetoothMacAddress)
-            } else if (saved.androidAssociationId != null) {
+            } else if (saved.androidAssociationId != null && saved.androidAssociationId != -1) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     deviceManager.disassociate(saved.androidAssociationId)
                 }
