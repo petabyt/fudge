@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -28,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextAlign
 import fantasyfudge.app.generated.resources.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -120,13 +122,14 @@ fun InfoScreen(navController: NavHostController = rememberNavController()) {
 @Preview(showBackground = true, device = "id:pixel_7", uiMode = 32)
 @Composable
 fun AboutScreen(navController: NavHostController = rememberNavController()) {
+    val uriHandler = LocalUriHandler.current
     return FudgeTheme {
         Scaffold(
             topBar = {
                 TopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(),
                     title = {
-                        Text("About")
+                        Text("About ${stringResource(Res.string.app_name)}")
                     },
                     navigationIcon = {
                         IconButton(onClick = {
@@ -147,9 +150,13 @@ fun AboutScreen(navController: NavHostController = rememberNavController()) {
                         Icon(painterResource(Res.drawable.outline_devices_other_24), contentDescription = null, modifier = Modifier.size(70.dp))
                     }
                     Text("""
-                        An alternative to the WiFi/Bluetooth app that came with your device.
-                        """.trimIndent(), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(10.dp))
-                    //Text("Support for more devices coming soon", style = MaterialTheme.typography.labelSmall)
+                        An alternative WiFi/Bluetooth app for pairing with your devices, managing photos, and more.
+                        """.trimIndent(), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(10.dp), textAlign = TextAlign.Center)
+                    Button(onClick = {
+                        uriHandler.openUri("https://fudge.fm/")
+                    }) {
+                        Text("Read More")
+                    }
                     HorizontalDivider(Modifier.padding(10.dp))
                     Text("Give big brother the middle finger", style = MaterialTheme.typography.titleMedium)
                     Text("""
@@ -163,8 +170,6 @@ fun AboutScreen(navController: NavHostController = rememberNavController()) {
                         You own your stuff. It shouldn't feel like you're renting it.
                     """.trimIndent(), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(10.dp))
                     HorizontalDivider(Modifier.padding(10.dp))
-
-                    Image(painterResource(Res.drawable.image), contentDescription = null)
                 }
             }
         }
