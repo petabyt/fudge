@@ -145,7 +145,7 @@ android {
         create("fujiapp") {
             dimension = "buildType"
             applicationId = "dev.danielc.fujiapp"
-            versionCode = 15
+            versionCode = 16
             versionName = "Beta Release"
             resValue("string", "app_name", "Fudge")
         }

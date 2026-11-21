@@ -1,5 +1,6 @@
 package dev.danielc.fudge.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,10 +14,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -47,10 +51,8 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun ClickableCard(text: String, icon: Painter, onClick: () -> Unit = {}) {
-    Card(Modifier
-        .fillMaxWidth()
-        .clickable(onClick = onClick)) {
+fun ClickableCard(text: String, icon: Painter, colors: CardColors = CardDefaults.cardColors(), onClick: () -> Unit = {}) {
+    Card(onClick, Modifier.fillMaxWidth(), colors = colors) {
         Row(Modifier.padding(20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Icon(icon, contentDescription = null)
             Text(text)
@@ -113,25 +115,22 @@ fun SettingsScreen(navController: NavController = rememberNavController()) {
                     ClickableCard(stringResource(Res.string.info), painterResource(Res.drawable.outline_info_24)) {
                         navController.navigate("info")
                     }
-//                    ClickableCard("Help", painterResource(R.drawable.baseline_help_24)) {
-//                        navController.navigate("help")
-//                    }
-//                    ClickableCard("Send feedback", painterResource(R.drawable.baseline_bug_report_24)) {
-//                        uriHandler.openUri("https://google.com/")
-//                    }
                     ClickableCard(stringResource(Res.string.debug_console), painterResource(Res.drawable.baseline_terminal_24)) {
                         navController.navigate("console")
                     }
                     HorizontalDivider()
-                    Button(onClick = {
-                        FileLayer.requestExternalImagesPermission()
-                    }) {
-                        Text(stringResource(Res.string.grant_access_to_all_local_images_optional))
-                    }
-                    Button(onClick = {
+                    val red = CardColors(
+                        MaterialTheme.colorScheme.error,
+                        MaterialTheme.colorScheme.errorContainer,
+                        MaterialTheme.colorScheme.error,
+                        MaterialTheme.colorScheme.errorContainer
+                    )
+                    ClickableCard(stringResource(Res.string.reset_all_settings), painterResource(Res.drawable.outline_refresh_24), colors = red) {
                         NativeRuntime.resetEverything()
-                    }) {
-                        Text(stringResource(Res.string.reset_all_settings))
+                        navController.navigateUp()
+                    }
+                    ClickableCard(stringResource(Res.string.grant_access_to_all_local_images_optional), painterResource(Res.drawable.outline_photo_library_24)) {
+                        FileLayer.requestExternalImagesPermission()
                     }
                 }
             }

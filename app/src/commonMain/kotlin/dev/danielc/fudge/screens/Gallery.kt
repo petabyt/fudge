@@ -76,6 +76,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import fantasyfudge.app.generated.resources.*
 import dev.danielc.fudge.BackgroundViewModel
+import dev.danielc.fudge.BuildInfo
 import dev.danielc.fudge.ObjectHandle
 import dev.danielc.fudge.FileLayer
 import dev.danielc.fudge.FileMetadata
@@ -249,6 +250,7 @@ abstract class GalleryViewModel(
                         if (tick()) continue
                     }
                     try {
+                        if (BuildInfo.isDebug) println("Gallery idling")
                         delay(1000.milliseconds)
                     } catch (_: CancellationException) {
                         break
